@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 
 const AddCategoryButton = ({ onCategoryAdded }) => {
-    // Default to localhost:3000 if REACT_APP_URL isn't set
-    const API_BASE_URL = process.env.REACT_APP_URL || 'http://localhost:3000';
+    const URL = process.env.REACT_APP_URL;
     const [showModal, setShowModal] = useState(false);
     const [name, setName] = useState('');
     const [photoFile, setPhotoFile] = useState(null);
@@ -51,7 +50,7 @@ const AddCategoryButton = ({ onCategoryAdded }) => {
             formData.append('name', name);
             formData.append('photo', photoFile);
 
-            const response = await fetch(`${API_BASE_URL}/api/categories`, {
+            const response = await fetch(`${URL}/api/categories`, {
                 method: 'POST',
                 body: formData,
             });
@@ -85,10 +84,22 @@ const AddCategoryButton = ({ onCategoryAdded }) => {
     return (
         <>
             <button 
-                className="btn btn-primary mb-4"
+                className="btn btn-primary mb-4 d-flex align-items-center gap-2"
                 onClick={() => setShowModal(true)}
+                style={{
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                    transition: 'all 0.3s ease',
+                    fontWeight: 500,
+                    padding: '0.5rem 1.25rem',
+                    borderRadius: '8px'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
             >
-                Add New Category
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                </svg>
+                Add Category
             </button>
 
             {showModal && (
@@ -102,6 +113,7 @@ const AddCategoryButton = ({ onCategoryAdded }) => {
                                     className="btn-close" 
                                     onClick={handleCloseModal}
                                     disabled={isSubmitting}
+                                    aria-label="Close"
                                 />
                             </div>
                             <div className="modal-body">
@@ -139,9 +151,10 @@ const AddCategoryButton = ({ onCategoryAdded }) => {
                                     <div className="modal-footer">
                                         <button 
                                             type="button" 
-                                            className="btn btn-secondary" 
+                                            className="btn btn-outline-secondary" 
                                             onClick={handleCloseModal}
                                             disabled={isSubmitting}
+                                            style={{ borderRadius: '8px' }}
                                         >
                                             Cancel
                                         </button>
@@ -149,6 +162,10 @@ const AddCategoryButton = ({ onCategoryAdded }) => {
                                             type="submit" 
                                             className="btn btn-primary" 
                                             disabled={isSubmitting}
+                                            style={{ 
+                                                borderRadius: '8px',
+                                                minWidth: '120px'
+                                            }}
                                         >
                                             {isSubmitting ? (
                                                 <>

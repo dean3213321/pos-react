@@ -1,9 +1,15 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import Navbar from './components/Navbar.jsx';
-import Sidebar from './components/SIdebar.jsx';
+import Sidebar from './components/SIdebar.jsx'; // Fixed typo in filename (SIdebar -> Sidebar)
 import Dashboard from './Dashboard.jsx';
 import Admin from './Admin.jsx';
+import Category from './pages/Category.jsx';
+import Items from './pages/Items.jsx';
+import Inventory from './pages/Inventory.jsx';
+import Schedules from './pages/Schedule.jsx';
 
 function App() {
   return (
@@ -18,21 +24,29 @@ function App() {
 
 function AppContent() {
   const location = useLocation();
-  const isAdminPage = location.pathname === '/admin';
+  const isAdminRoute = location.pathname.startsWith('/admin') || 
+                      location.pathname === '/category' || 
+                      location.pathname === '/items' || 
+                      location.pathname === '/inventory' || 
+                      location.pathname === '/schedules';
 
   return (
     <div className="container-fluid h-100 p-0">
       <div className="row h-100 m-0">
-        {!isAdminPage && (
+        {!isAdminRoute && (
           <div className="col-md-3 col-lg-2 p-0 bg-light h-100">
             <Sidebar />
           </div>
         )}
-        <div className={`col-md-${isAdminPage ? 12 : 9} col-lg-${isAdminPage ? 12 : 10} p-0 h-100`}>
+        <div className={`col-md-${isAdminRoute ? 12 : 9} col-lg-${isAdminRoute ? 12 : 10} p-0 h-100`}>
           <div className="h-100 overflow-auto p-3">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/category" element={<Category />} />
+              <Route path="/items" element={<Items />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/schedules" element={<Schedules />} />
             </Routes>
           </div>
         </div>

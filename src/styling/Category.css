@@ -1,0 +1,55 @@
+/* Category.css */
+
+/* Wrapper & header */
+.category-wrapper {
+  padding: 1rem;
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* DataTable container card */
+.datatable-container {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+/* Thumbnail & placeholder */
+.dt-image {
+  max-width: 50px;
+  max-height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.dt-no-image {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .datatable-container {
+    padding: 10px;
+  }
+
+  .category-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
