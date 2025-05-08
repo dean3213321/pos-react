@@ -1,0 +1,79 @@
+/* src/components/Sidebar.module.css */
+
+.sidebar {
+    width: 240px;
+    height: calc(100vh - 55px);    /* subtract navbar height */
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+  
+  .header {
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    flex-shrink: 0;
+    text-align: center;
+  }
+  
+  .list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+  
+  /* hide scrollbar for webkit browsers */
+  .list::-webkit-scrollbar {
+    display: none;
+  }
+  .list {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .card {
+    cursor: pointer;
+    margin-bottom: 0.75rem;
+    border: 1px solid transparent;
+    transition: border-color 0.2s ease;
+    border-radius: 0.25rem;
+    background: #fff;
+  }
+  
+  .card:hover {
+    border-color: #adb5bd;
+  }
+  
+  .active {
+    border-color: #0d6efd;
+  }
+  
+  .imageWrapper {
+    position: relative;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .image {
+    max-height: 100%;
+    width: 100%;
+    object-fit: contain;
+  }
+  
+  .fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    background-color: #e9ecef;
+    font-size: 1.1rem;
+  }
+  
+  .body {
+    padding: 0.25rem 0.5rem;
+  }
+  
