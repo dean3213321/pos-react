@@ -1,3 +1,4 @@
+/* Dashboard.jsx */
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert, Image, Container, Button } from 'react-bootstrap';
 import Cart from './components/Cart.jsx';
@@ -55,12 +56,19 @@ const Dashboard = ({ selectedCategory }) => {
     cart.reduce((sum, i) => sum + (parseFloat(i.price) || 0) * i.quantity, 0);
 
   return (
-    <Container fluid className="h-100">
-      <Row className="h-100">
+    <Container fluid className="py-4 px-4 h-100">
+      <Row className="h-100 gx-5 gy-5">
+        {/* Items Section */}
         <Col md={8} className="h-100 overflow-auto">
-          <div className="mb-4">
-            <h2>{selectedCategory ? `${selectedCategory.name} Items` : 'Select a category'}</h2>
-            {selectedCategory && <p className="text-muted">{items.length} items found</p>}
+          <div className="mb-5">
+            <h2 className="mb-3">
+              {selectedCategory ? `${selectedCategory.name} Items` : 'Select a category'}
+            </h2>
+            {selectedCategory && (
+              <p className="text-muted mb-0">
+                {items.length} {items.length === 1 ? 'item' : 'items'} found
+              </p>
+            )}
           </div>
 
           {loading ? (
@@ -70,40 +78,38 @@ const Dashboard = ({ selectedCategory }) => {
           ) : error ? (
             <Alert variant="danger">Error: {error}</Alert>
           ) : items.length > 0 ? (
-            <Row xs={1} md={1} lg={1} className="g-4">
-              {Array.from({ length: Math.ceil(items.length / 3) }).map((_, r) => (
-                <Row key={r} className="mb-4">
-                  {items.slice(r * 3, r * 3 + 3).map(item => (
-                    <Col key={item.id} md={4}>
-                      <Card className="h-100 shadow-sm">
-                        <div className="position-relative" style={{ height: '150px', overflow: 'hidden' }}>
-                          {item.photo_path ? (
-                            <Image
-                              src={`${process.env.REACT_APP_URL}${item.photo_path}`}
-                              alt={item.name}
-                              className="w-100 h-100"
-                              style={{ objectFit: 'cover' }}
-                              onError={e => { e.target.src = 'https://via.placeholder.com/300x200?text=No+Image'; }}
-                            />
-                          ) : (
-                            <div className="d-flex justify-content-center align-items-center bg-light text-muted w-100 h-100">
-                              No Image Available
-                            </div>
-                          )}
+            <Row xs={1} md={2} lg={3} className="g-4">
+              {items.map(item => (
+                <Col key={item.id}>
+                  <Card className="h-100 shadow-sm">
+                    <div className="position-relative overflow-hidden" style={{ height: '180px' }}>
+                      {item.photo_path ? (
+                        <Image
+                          src={`${process.env.REACT_APP_URL}${item.photo_path}`}
+                          alt={item.name}
+                          className="w-100 h-100"
+                          style={{ objectFit: 'cover' }}
+                          onError={e => { e.target.src = 'https://via.placeholder.com/300x200?text=No+Image'; }}
+                        />
+                      ) : (
+                        <div className="d-flex justify-content-center align-items-center bg-light text-muted w-100 h-100">
+                          No Image Available
                         </div>
-                        <Card.Body>
-                          <Card.Title>{item.name}</Card.Title>
-                          <Card.Text className="text-success fw-bold">{formatPrice(item.price)}</Card.Text>
-                        </Card.Body>
-                        <Card.Footer className="bg-white border-0">
-                          <Button variant="primary" className="w-100" onClick={() => addToCart(item)}>
-                            Add to Cart
-                          </Button>
-                        </Card.Footer>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
+                      )}
+                    </div>
+                    <Card.Body className="d-flex flex-column justify-content-between">
+                      <div>
+                        <Card.Title className="fs-5 mb-2">{item.name}</Card.Title>
+                        <Card.Text className="text-success fw-bold fs-6">
+                          {formatPrice(item.price)}
+                        </Card.Text>
+                      </div>
+                      <Button variant="primary" className="mt-3 w-100" onClick={() => addToCart(item)}>
+                        Add to Cart
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                </Col>
               ))}
             </Row>
           ) : (
@@ -111,12 +117,14 @@ const Dashboard = ({ selectedCategory }) => {
           )}
         </Col>
 
-        <Col md={4}>
+        {/* Cart Section */}
+        <Col md={4} className="h-100">
           <Cart
             cart={cart}
             formatPrice={formatPrice}
             removeFromCart={removeFromCart}
             calculateTotal={calculateTotal}
+            className="p-3"
           />
         </Col>
       </Row>

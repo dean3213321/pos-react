@@ -1,5 +1,7 @@
+/* Sidebar.jsx */
 import React, { useState, useEffect } from "react";
 import { Nav, Card, Spinner, Alert, Image } from 'react-bootstrap';
+import '../styling/Sidebar.css';
 
 const Sidebar = ({ onSelect = () => {} }) => {
   const [categories, setCategories] = useState([]);
@@ -56,48 +58,40 @@ const Sidebar = ({ onSelect = () => {} }) => {
       <div className="p-3 border-bottom">
         <h5 className="text-center mb-0">Categories</h5>
       </div>
-      
-      <div className="flex-grow-1 overflow-auto" style={{ 
-        scrollbarWidth: 'none', /* Firefox */
-        msOverflowStyle: 'none', /* IE and Edge */
-      }}>
-        <Nav defaultActiveKey={activeId} className="flex-column p-3" style={{
-          '&::-webkit-scrollbar': { /* Chrome, Safari, Opera */
-            display: 'none'
-          }
-        }}>
-          {categories.map(category => (
-            <Nav.Item key={category.id} className="mb-2">
-              <Card 
-                onClick={() => handleClick(category)}
-                className={activeId === category.id ? 'border-primary' : ''}
-                role="button"
-              >
-                {category.photo_path ? (
-                  <Card.Img 
-                    as={Image}
-                    variant="top"
-                    src={`${process.env.REACT_APP_URL}${category.photo_path}`}
-                    alt={category.name}
-                    onError={(e) => e.currentTarget.style.display = 'none'}
-                    style={{ objectFit: 'contain', height: '80px' }}
-                  />
-                ) : (
-                  <div 
-                    className="d-flex justify-content-center align-items-center bg-secondary text-white"
-                    style={{ height: '80px' }}
-                  >
-                    {category.name}
-                  </div>
-                )}
-                <Card.Body className="py-2 px-1 text-center">
-                  <Card.Title as="h6" className="mb-0">
-                    {category.name}
-                  </Card.Title>
-                </Card.Body>
-              </Card>
-            </Nav.Item>
-          ))}
+      <div className="flex-grow-1 overflow-auto no-scrollbar">
+        <Nav className="flex-column p-3">
+          {categories.map(category => {
+            const isActive = activeId === category.id;
+            return (
+              <Nav.Item key={category.id} className="mb-2">
+                <Card 
+                  onClick={() => handleClick(category)}
+                  className={`category-card ${isActive ? 'active' : ''}`}
+                  role="button"
+                >
+                  {category.photo_path ? (
+                    <Card.Img 
+                      as={Image}
+                      variant="top"
+                      src={`${process.env.REACT_APP_URL}${category.photo_path}`}
+                      alt={category.name}
+                      onError={(e) => e.currentTarget.style.display = 'none'}
+                      style={{ objectFit: 'contain', height: '80px' }}
+                    />
+                  ) : (
+                    <div className="placeholder-icon">
+                      {category.name}
+                    </div>
+                  )}
+                  <Card.Body className="py-2 px-1 text-center">
+                    <Card.Title as="h6" className="mb-0">
+                      {category.name}
+                    </Card.Title>
+                  </Card.Body>
+                </Card>
+              </Nav.Item>
+            );
+          })}
         </Nav>
       </div>
     </div>
