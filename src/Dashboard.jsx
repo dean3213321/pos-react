@@ -52,6 +52,17 @@ const Dashboard = ({ selectedCategory }) => {
     setCart(prev => prev.filter(i => i.id !== itemId));
   };
 
+  const updateQuantity = (itemId, newQuantity) => {
+    setCart(prev =>
+      prev.map(item =>
+        item.id === itemId
+          ? { ...item, quantity: Math.max(newQuantity, 1) }
+          : item
+      )
+    );
+  };
+  
+
   const calculateTotal = () =>
     cart.reduce((sum, i) => sum + (parseFloat(i.price) || 0) * i.quantity, 0);
 
@@ -60,8 +71,8 @@ const Dashboard = ({ selectedCategory }) => {
       <Row className="h-100 gx-5 gy-5">
         {/* Items Section */}
         <Col md={8} className="h-100 overflow-auto">
-          <div className="mb-5">
-            <h2 className="mb-3">
+          <div className="mb-3">
+            <h2 className="mb-1">
               {selectedCategory ? `${selectedCategory.name} Items` : 'Select a category'}
             </h2>
             {selectedCategory && (
@@ -78,7 +89,7 @@ const Dashboard = ({ selectedCategory }) => {
           ) : error ? (
             <Alert variant="danger">Error: {error}</Alert>
           ) : items.length > 0 ? (
-            <Row xs={1} md={2} lg={3} className="g-4">
+            <Row xs={1} md={2} lg={4} className="g-4">
               {items.map(item => (
                 <Col key={item.id}>
                   <Card className="h-100 shadow-sm">
@@ -124,6 +135,7 @@ const Dashboard = ({ selectedCategory }) => {
             formatPrice={formatPrice}
             removeFromCart={removeFromCart}
             calculateTotal={calculateTotal}
+            updateQuantity={updateQuantity} // ✅ Add this
             className="p-3"
           />
         </Col>
