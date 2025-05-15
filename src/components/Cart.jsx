@@ -1,3 +1,4 @@
+// components/Cart.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { ListGroup, Button, Alert, ButtonGroup } from 'react-bootstrap';
 
@@ -16,26 +17,21 @@ const Cart = ({
   const [isChecking, setIsChecking] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [wispayError, setWispayError] = useState(null);
-
   const rfidInputRef = useRef(null);
 
-  // Focus RFID input when Wispay is selected
   useEffect(() => {
     if (paymentMethod === 'wispay') {
       rfidInputRef.current?.focus();
     }
   }, [paymentMethod]);
 
-  // Clear entire cart by removing each item and reset payment state
   const clearAllItems = () => {
     cart.forEach(item => removeFromCart(item.id));
-    // reset payment form
     setRfid('');
     setCredit(null);
     setPaymentMethod('cash');
   };
 
-  // Fetch total credit (optional check)
   const checkCredit = async () => {
     if (!rfid) {
       setWispayError('Please enter RFID');
@@ -45,10 +41,7 @@ const Cart = ({
     setWispayError(null);
     try {
       const res = await fetch(`${URL}/api/wispay/credit?rfid=${encodeURIComponent(rfid)}`);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to fetch credit');
-      }
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch credit');
       const data = await res.json();
       if (data.success) {
         setCredit(data.credit);
@@ -63,17 +56,14 @@ const Cart = ({
     }
   };
 
-  // Handle Wispay payment (allow paying without explicit credit check)
   const handleWispayPayment = async () => {
     if (!rfid) {
       setWispayError('Please enter RFID');
       rfidInputRef.current?.focus();
       return;
     }
-
     setIsProcessing(true);
     setWispayError(null);
-
     try {
       const total = calculateTotal();
       const res = await fetch(`${URL}/api/wispay/payment`, {
@@ -84,16 +74,11 @@ const Cart = ({
           amount: total.toString(),
           empid: 'POS_USER',
           username: 'POS Operator',
-          product_name: cart.map(item => item.name).join(', '),
-          quantity: cart.reduce((sum, item) => sum + item.quantity, 0)
+          product_name: cart.map(i => i.name).join(', '),
+          quantity: cart.reduce((s, i) => s + i.quantity, 0)
         })
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Payment failed');
-      }
-
+      if (!res.ok) throw new Error((await res.json()).error || 'Payment failed');
       const data = await res.json();
       if (data.success) {
         alert(`Payment successful! New balance: ${formatPrice(data.newBalance)}`);
@@ -109,7 +94,6 @@ const Cart = ({
     }
   };
 
-  // Handle cash payment
   const handleCashPayment = () => {
     alert(`Processing Cash on Delivery for ${formatPrice(calculateTotal())}`);
     clearAllItems();
@@ -133,13 +117,34 @@ const Cart = ({
                   </div>
                   <div className="d-flex flex-column align-items-end">
                     <div className="d-flex align-items-center mb-2">
-                      <Button variant="outline-secondary" size="sm" className="px-2 py-0" onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}>-</Button>
-                      <span className="mx-2" style={{ minWidth: '24px', textAlign: 'center' }}>{item.quantity}</span>
-                      <Button variant="outline-secondary" size="sm" className="px-2 py-0" onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</Button>
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        className="px-2 py-0"
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                      >
+                        –
+                      </Button>
+                      <span className="mx-2" style={{ minWidth: '24px', textAlign: 'center' }}>
+                        {item.quantity}
+                      </span>
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        className="px-2 py-0"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        disabled={item.quantity >= item.stock}
+                      >
+                        +
+                      </Button>
                     </div>
+                    <div className="text-muted small mb-2">In stock: {item.stock}</div>
                     <div className="d-flex align-items-center">
-                      <span className="fw-bold me-2">{formatPrice((parseFloat(item.price) || 0) * item.quantity)}</span>
-                      <Button variant="outline-danger" size="sm" className="px-2 py-0" onClick={() => removeFromCart(item.id)}>×</Button>
+                      <span className="fw-bold me-2">{formatPrice(item.quantity * parseFloat(item.price))}</span>
+                      <Button variant="outline-danger" size="sm" className="px-2 py-0" onClick={() => removeFromCart(item.id)}>
+                        ×
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -156,8 +161,20 @@ const Cart = ({
             <div className="mb-4">
               <h5 className="fw-bold mb-3 text-center">Select Payment Method</h5>
               <ButtonGroup className="w-100 mb-3">
-                <Button variant={paymentMethod === 'cash' ? 'primary' : 'outline-primary'} onClick={() => setPaymentMethod('cash')} className="py-2 d-flex align-items-center justify-content-center"><i className="bi bi-cash-coin me-3"></i><span>Cash</span></Button>
-                <Button variant={paymentMethod === 'wispay' ? 'success' : 'outline-success'} onClick={() => setPaymentMethod('wispay')} className="py-2 d-flex align-items-center justify-content-center"><i className="bi bi-credit-card me-3"></i><span>Wispay</span></Button>
+                <Button
+                  variant={paymentMethod === 'cash' ? 'primary' : 'outline-primary'}
+                  onClick={() => setPaymentMethod('cash')}
+                  className="py-2 d-flex align-items-center justify-content-center"
+                >
+                  <i className="bi bi-cash-coin me-3"></i><span>Cash</span>
+                </Button>
+                <Button
+                  variant={paymentMethod === 'wispay' ? 'success' : 'outline-success'}
+                  onClick={() => setPaymentMethod('wispay')}
+                  className="py-2 d-flex align-items-center justify-content-center"
+                >
+                  <i className="bi bi-credit-card me-3"></i><span>Wispay</span>
+                </Button>
               </ButtonGroup>
 
               {paymentMethod === 'wispay' && (
@@ -171,10 +188,25 @@ const Cart = ({
                       onChange={e => setRfid(e.target.value)}
                       ref={rfidInputRef}
                     />
-                    <button className="btn btn-outline-secondary" type="button" onClick={checkCredit} disabled={isChecking}>{isChecking ? 'Checking...' : 'Check Credit'}</button>
+                    <button
+                      className="btn btn-outline-secondary"
+                      type="button"
+                      onClick={checkCredit}
+                      disabled={isChecking}
+                    >
+                      {isChecking ? 'Checking…' : 'Check Credit'}
+                    </button>
                   </div>
-                  {credit !== null && <div className="mt-2 text-end"><strong>Available Credit:</strong> {formatPrice(credit)}</div>}
-                  {wispayError && <Alert variant="danger" className="mt-2" dismissible onClose={() => setWispayError(null)}>{wispayError}</Alert>}
+                  {credit !== null && (
+                    <div className="mt-2 text-end">
+                      <strong>Available Credit:</strong> {formatPrice(credit)}
+                    </div>
+                  )}
+                  {wispayError && (
+                    <Alert variant="danger" className="mt-2" dismissible onClose={() => setWispayError(null)}>
+                      {wispayError}
+                    </Alert>
+                  )}
                 </div>
               )}
             </div>
@@ -186,7 +218,12 @@ const Cart = ({
               onClick={paymentMethod === 'cash' ? handleCashPayment : handleWispayPayment}
               disabled={paymentMethod === 'wispay' && (!rfid || isProcessing)}
             >
-              {isProcessing ? <span>Processing...</span> : paymentMethod === 'cash' ? <><i className="bi bi-check-circle me-2"></i><span>Place Order (Pay with Cash)</span></> : <><i className="bi bi-lock-fill me-2"></i><span>Place Order (Pay with Wispay)</span></>}
+              {isProcessing
+                ? 'Processing…'
+                : paymentMethod === 'cash'
+                  ? <><i className="bi bi-check-circle me-2"></i><span>Place Order (Pay with Cash)</span></>
+                  : <><i className="bi bi-lock-fill me-2"></i><span>Place Order (Pay with Wispay)</span></>
+              }
             </Button>
           </div>
         </>

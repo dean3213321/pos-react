@@ -5,6 +5,7 @@ const AddItemButton = ({ onItemAdded }) => {
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [quantity, setQuantity] = useState(0);
   const [category, setCategory] = useState('');
   const [categories, setCategories] = useState([]);
   const [photoFile, setPhotoFile] = useState(null);
@@ -25,7 +26,7 @@ const AddItemButton = ({ onItemAdded }) => {
     };
 
     if (showModal) fetchCategories();
-  }, [showModal]);
+  }, [showModal, URL]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -44,6 +45,7 @@ const AddItemButton = ({ onItemAdded }) => {
     setSuccess('');
     setName('');
     setPrice('');
+    setQuantity(0);
     setCategory('');
     setPhotoFile(null);
   };
@@ -60,6 +62,7 @@ const AddItemButton = ({ onItemAdded }) => {
       const formData = new FormData();
       formData.append('name', name);
       formData.append('price', price);
+      formData.append('quantity', quantity);
       formData.append('category', category);
       if (photoFile) formData.append('photo', photoFile);
 
@@ -91,6 +94,7 @@ const AddItemButton = ({ onItemAdded }) => {
         onMouseOver={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
         onMouseOut={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
       >
+        {/* plus icon */}
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
           <path d="M2 2h12v12H2z" stroke="currentColor" strokeWidth="1" fill="none" />
           <path d="M8 4v8M4 8h8" stroke="currentColor" strokeWidth="1" />
@@ -117,6 +121,10 @@ const AddItemButton = ({ onItemAdded }) => {
                   <div className="mb-3">
                     <label className="form-label">Price</label>
                     <input type="number" step="0.01" className="form-control" value={price} onChange={(e) => setPrice(e.target.value)} required disabled={isSubmitting} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Quantity</label>
+                    <input type="number" className="form-control" value={quantity} onChange={(e) => setQuantity(e.target.value)} min="0" required disabled={isSubmitting} />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Category</label>

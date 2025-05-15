@@ -1,6 +1,6 @@
-/* Dashboard.jsx */
+// Dashboard.jsx
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Spinner, Alert, Image, Container, Button } from 'react-bootstrap';
+import { Card, Row, Col, Spinner, Alert, Image, Container } from 'react-bootstrap';
 import Cart from './components/Cart.jsx';
 
 const Dashboard = ({ selectedCategory }) => {
@@ -10,26 +10,26 @@ const Dashboard = ({ selectedCategory }) => {
   const [cart, setCart] = useState([]);
 
   useEffect(() => {
-    if (selectedCategory) {
-      const fetchItems = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const URL = process.env.REACT_APP_URL || '';
-          const response = await fetch(`${URL}/api/items?category=${selectedCategory.name}`);
-          if (!response.ok) throw new Error('Failed to fetch items');
-          const data = await response.json();
-          setItems(data.data || []);
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchItems();
-    } else {
+    if (!selectedCategory) {
       setItems([]);
+      return;
     }
+    const fetchItems = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const URL = process.env.REACT_APP_URL || '';
+        const res = await fetch(`${URL}/api/items?category=${selectedCategory.name}`);
+        if (!res.ok) throw new Error('Failed to fetch items');
+        const { data } = await res.json();
+        setItems(data || []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItems();
   }, [selectedCategory]);
 
   const formatPrice = (price) => {
@@ -38,30 +38,40 @@ const Dashboard = ({ selectedCategory }) => {
     return isNaN(num) ? 'Invalid Price' : `₱${num.toFixed(2)}`;
   };
 
+  // Add to cart, but never exceed item.quantity (stock)
   const addToCart = (item) => {
     setCart(prev => {
       const exists = prev.find(i => i.id === item.id);
       if (exists) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+        if (exists.quantity >= item.quantity) return prev;
+        return prev.map(i =>
+          i.id === item.id
+            ? { ...i, quantity: i.quantity + 1 }
+            : i
+        );
       }
-      return [...prev, { ...item, quantity: 1 }];
+      if (item.quantity > 0) {
+        return [...prev, { ...item, quantity: 1, stock: item.quantity }];
+      }
+      return prev;
     });
   };
 
+  // Remove an item entirely
   const removeFromCart = (itemId) => {
     setCart(prev => prev.filter(i => i.id !== itemId));
   };
 
+  // Update cart quantity, clamped between 1 and stock
   const updateQuantity = (itemId, newQuantity) => {
     setCart(prev =>
       prev.map(item =>
         item.id === itemId
-          ? { ...item, quantity: Math.max(newQuantity, 1) }
+          ? { ...item, quantity: Math.max(1, Math.min(newQuantity, item.stock)) }
           : item
       )
     );
   };
-  
 
   const calculateTotal = () =>
     cart.reduce((sum, i) => sum + (parseFloat(i.price) || 0) * i.quantity, 0);
@@ -69,7 +79,7 @@ const Dashboard = ({ selectedCategory }) => {
   return (
     <Container fluid className="py-4 px-4 h-100">
       <Row className="h-100 gx-5 gy-5">
-        {/* Items Section */}
+        {/* Items List */}
         <Col md={8} className="h-100 overflow-auto">
           <div className="mb-3">
             <h2 className="mb-1">
@@ -114,10 +124,17 @@ const Dashboard = ({ selectedCategory }) => {
                         <Card.Text className="text-success fw-bold fs-6">
                           {formatPrice(item.price)}
                         </Card.Text>
+                        <Card.Text className="text-muted small">
+                          In stock: {item.quantity}
+                        </Card.Text>
                       </div>
-                      <Button variant="primary" className="mt-3 w-100" onClick={() => addToCart(item)}>
-                        Add to Cart
-                      </Button>
+                      <button
+                        className="btn btn-primary mt-3 w-100"
+                        onClick={() => addToCart(item)}
+                        disabled={item.quantity === 0}
+                      >
+                        {item.quantity > 0 ? 'Add to Cart' : 'Out of Stock'}
+                      </button>
                     </Card.Body>
                   </Card>
                 </Col>
@@ -128,15 +145,14 @@ const Dashboard = ({ selectedCategory }) => {
           )}
         </Col>
 
-        {/* Cart Section */}
+        {/* Cart */}
         <Col md={4} className="h-100">
           <Cart
             cart={cart}
             formatPrice={formatPrice}
             removeFromCart={removeFromCart}
             calculateTotal={calculateTotal}
-            updateQuantity={updateQuantity} // ✅ Add this
-            className="p-3"
+            updateQuantity={updateQuantity}
           />
         </Col>
       </Row>

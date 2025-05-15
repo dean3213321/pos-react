@@ -19,7 +19,6 @@ const Items = () => {
   const [itemToDelete, setItemToDelete] = useState(null);
 
   useEffect(() => {
-    // fetch items
     const fetchItems = async () => {
       try {
         const URl = process.env.REACT_APP_URL || "";
@@ -31,7 +30,6 @@ const Items = () => {
         console.error(err);
       }
     };
-    // fetch categories for dropdown
     const fetchCategories = async () => {
       try {
         const URl = process.env.REACT_APP_URL || "";
@@ -114,6 +112,7 @@ const Items = () => {
     },
     { title: "Name", data: "name" },
     { title: "Price", data: "price" },
+    { title: "Quantity", data: "quantity" },
     { title: "Category", data: "category" },
     {
       title: "Actions",
@@ -147,7 +146,7 @@ const Items = () => {
     <div className="items-wrapper">
       <div className="items-header d-flex justify-content-between align-items-center mb-3">
         <h2>Items</h2>
-        <AddItemButton />
+        <AddItemButton onItemAdded={(newItem) => setData(prev => [...prev, newItem])} />
       </div>
       <div className="datatable-container">
         <DataTable
@@ -183,8 +182,11 @@ const Items = () => {
                   <Form.Control type="number" step="0.01" name="price" defaultValue={currentItem.price} required />
                 </Form.Group>
                 <Form.Group className="mb-3">
+                  <Form.Label>Quantity</Form.Label>
+                  <Form.Control type="number" name="quantity" defaultValue={currentItem.quantity} min="0" required />
+                </Form.Group>
+                <Form.Group className="mb-3">
                   <Form.Label>Category</Form.Label>
-                  {/* Dropdown select for categories */}
                   <Form.Select name="category" defaultValue={currentItem.category || ''} required>
                     <option value="">Select category</option>
                     {categories.map(cat => (
@@ -225,7 +227,7 @@ const Items = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
-          <Button varian t="danger" onClick={confirmDelete}>Delete</Button>
+          <Button variant="danger" onClick={confirmDelete}>Delete</Button>
         </Modal.Footer>
       </Modal>
     </div>
