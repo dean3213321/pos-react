@@ -10,6 +10,7 @@ const Cart = ({
   removeFromCart,
   calculateTotal,
   updateQuantity,
+  onOrderSuccess,   // <- new prop
 }) => {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [rfid, setRfid] = useState('');
@@ -32,6 +33,18 @@ const Cart = ({
     setPaymentMethod('cash');
   };
 
+  // POST cart items to decrement stock
+  const submitOrder = async () => {
+    const res = await fetch(`${URL}/api/order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: cart.map(i => ({ id: i.id, quantity: i.quantity })),
+      }),
+    });
+    if (!res.ok) throw new Error('Failed to place order');
+  };
+
   const checkCredit = async () => {
     if (!rfid) {
       setWispayError('Please enter RFID');
@@ -43,11 +56,8 @@ const Cart = ({
       const res = await fetch(`${URL}/api/wispay/credit?rfid=${encodeURIComponent(rfid)}`);
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch credit');
       const data = await res.json();
-      if (data.success) {
-        setCredit(data.credit);
-      } else {
-        throw new Error(data.error || 'Failed to fetch credit');
-      }
+      if (data.success) setCredit(data.credit);
+      else throw new Error(data.error || 'Failed to fetch credit');
     } catch (err) {
       setWispayError(err.message);
       setCredit(null);
@@ -65,6 +75,7 @@ const Cart = ({
     setIsProcessing(true);
     setWispayError(null);
     try {
+      // 1) Process payment
       const total = calculateTotal();
       const res = await fetch(`${URL}/api/wispay/payment`, {
         method: 'POST',
@@ -75,18 +86,21 @@ const Cart = ({
           empid: 'POS_USER',
           username: 'POS Operator',
           product_name: cart.map(i => i.name).join(', '),
-          quantity: cart.reduce((s, i) => s + i.quantity, 0)
-        })
+          quantity: cart.reduce((s, i) => s + i.quantity, 0),
+        }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Payment failed');
       const data = await res.json();
-      if (data.success) {
-        alert(`Payment successful! New balance: ${formatPrice(data.newBalance)}`);
-        setCredit(data.newBalance);
-        clearAllItems();
-      } else {
-        throw new Error(data.error || 'Payment failed');
-      }
+      if (!data.success) throw new Error(data.error || 'Payment failed');
+
+      // 2) Decrement stock
+      await submitOrder();
+
+      // 3) Refresh stock in parent & clear
+      onOrderSuccess();
+      alert(`Payment successful! New balance: ${formatPrice(data.newBalance)}`);
+      setCredit(data.newBalance);
+      clearAllItems();
     } catch (err) {
       setWispayError(err.message);
     } finally {
@@ -94,9 +108,21 @@ const Cart = ({
     }
   };
 
-  const handleCashPayment = () => {
-    alert(`Processing Cash on Delivery for ${formatPrice(calculateTotal())}`);
-    clearAllItems();
+  const handleCashPayment = async () => {
+    setIsProcessing(true);
+    try {
+      // 1) Decrement stock
+      await submitOrder();
+
+      // 2) Refresh & clear
+      onOrderSuccess();
+      alert(`Processing Cash on Delivery for ${formatPrice(calculateTotal())}`);
+      clearAllItems();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -123,9 +149,7 @@ const Cart = ({
                         className="px-2 py-0"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         disabled={item.quantity <= 1}
-                      >
-                        –
-                      </Button>
+                      >−</Button>
                       <span className="mx-2" style={{ minWidth: '24px', textAlign: 'center' }}>
                         {item.quantity}
                       </span>
@@ -135,16 +159,17 @@ const Cart = ({
                         className="px-2 py-0"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         disabled={item.quantity >= item.stock}
-                      >
-                        +
-                      </Button>
+                      >+</Button>
                     </div>
                     <div className="text-muted small mb-2">In stock: {item.stock}</div>
                     <div className="d-flex align-items-center">
                       <span className="fw-bold me-2">{formatPrice(item.quantity * parseFloat(item.price))}</span>
-                      <Button variant="outline-danger" size="sm" className="px-2 py-0" onClick={() => removeFromCart(item.id)}>
-                        ×
-                      </Button>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        className="px-2 py-0"
+                        onClick={() => removeFromCart(item.id)}
+                      >×</Button>
                     </div>
                   </div>
                 </div>

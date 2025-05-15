@@ -1,5 +1,5 @@
 // Dashboard.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Spinner, Alert, Image, Container } from 'react-bootstrap';
 import Cart from './components/Cart.jsx';
 
@@ -9,28 +9,31 @@ const Dashboard = ({ selectedCategory }) => {
   const [error, setError] = useState(null);
   const [cart, setCart] = useState([]);
 
-  useEffect(() => {
+  // Fetch items for the current category
+  const loadItems = useCallback(async () => {
     if (!selectedCategory) {
       setItems([]);
       return;
     }
-    const fetchItems = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const URL = process.env.REACT_APP_URL || '';
-        const res = await fetch(`${URL}/api/items?category=${selectedCategory.name}`);
-        if (!res.ok) throw new Error('Failed to fetch items');
-        const { data } = await res.json();
-        setItems(data || []);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchItems();
+    try {
+      setLoading(true);
+      setError(null);
+      const URL = process.env.REACT_APP_URL || '';
+      const res = await fetch(`${URL}/api/items?category=${selectedCategory.name}`);
+      if (!res.ok) throw new Error('Failed to fetch items');
+      const { data } = await res.json();
+      setItems(data || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, [selectedCategory]);
+
+  // Load on mount and whenever the category changes
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
 
   const formatPrice = (price) => {
     if (price == null) return 'N/A';
@@ -38,16 +41,14 @@ const Dashboard = ({ selectedCategory }) => {
     return isNaN(num) ? 'Invalid Price' : `₱${num.toFixed(2)}`;
   };
 
-  // Add to cart, but never exceed item.quantity (stock)
+  // Cart operations
   const addToCart = (item) => {
     setCart(prev => {
       const exists = prev.find(i => i.id === item.id);
       if (exists) {
         if (exists.quantity >= item.quantity) return prev;
         return prev.map(i =>
-          i.id === item.id
-            ? { ...i, quantity: i.quantity + 1 }
-            : i
+          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
       if (item.quantity > 0) {
@@ -57,21 +58,17 @@ const Dashboard = ({ selectedCategory }) => {
     });
   };
 
-  // Remove an item entirely
-  const removeFromCart = (itemId) => {
+  const removeFromCart = (itemId) =>
     setCart(prev => prev.filter(i => i.id !== itemId));
-  };
 
-  // Update cart quantity, clamped between 1 and stock
-  const updateQuantity = (itemId, newQuantity) => {
+  const updateQuantity = (itemId, newQty) =>
     setCart(prev =>
-      prev.map(item =>
-        item.id === itemId
-          ? { ...item, quantity: Math.max(1, Math.min(newQuantity, item.stock)) }
-          : item
+      prev.map(i =>
+        i.id === itemId
+          ? { ...i, quantity: Math.max(1, Math.min(newQty, i.stock)) }
+          : i
       )
     );
-  };
 
   const calculateTotal = () =>
     cart.reduce((sum, i) => sum + (parseFloat(i.price) || 0) * i.quantity, 0);
@@ -79,7 +76,7 @@ const Dashboard = ({ selectedCategory }) => {
   return (
     <Container fluid className="py-4 px-4 h-100">
       <Row className="h-100 gx-5 gy-5">
-        {/* Items List */}
+        {/* Items Section */}
         <Col md={8} className="h-100 overflow-auto">
           <div className="mb-3">
             <h2 className="mb-1">
@@ -145,7 +142,7 @@ const Dashboard = ({ selectedCategory }) => {
           )}
         </Col>
 
-        {/* Cart */}
+        {/* Cart Section */}
         <Col md={4} className="h-100">
           <Cart
             cart={cart}
@@ -153,6 +150,7 @@ const Dashboard = ({ selectedCategory }) => {
             removeFromCart={removeFromCart}
             calculateTotal={calculateTotal}
             updateQuantity={updateQuantity}
+            onOrderSuccess={loadItems}    // <-- triggers reload of items
           />
         </Col>
       </Row>
