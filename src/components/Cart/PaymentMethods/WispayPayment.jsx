@@ -16,14 +16,25 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
   }, []);
 
   const submitOrder = async () => {
+    const total = calculateTotal();
     const res = await fetch(`${URL}/api/order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        items: cart.map(i => ({ id: i.id, quantity: i.quantity })),
+        items: cart.map(i => ({ 
+          id: i.id, 
+          quantity: i.quantity,
+          price: i.price,
+          name: i.name
+        })),
+        paymentType: 'Wispay',
+        rfid,
+        total
       }),
     });
-    if (!res.ok) throw new Error('Failed to place order');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to place order');
+    return data.orderNumber;
   };
 
   const checkCredit = async () => {
@@ -57,7 +68,9 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
     setWispayError(null);
     try {
       const total = calculateTotal();
-      const res = await fetch(`${URL}/api/wispay/payment`, {
+      
+      // Process Wispay payment first
+      const paymentRes = await fetch(`${URL}/api/wispay/payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -69,14 +82,17 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
           quantity: cart.reduce((s, i) => s + i.quantity, 0),
         }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || 'Payment failed');
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Payment failed');
+      
+      if (!paymentRes.ok) throw new Error((await paymentRes.json()).error || 'Payment failed');
+      const paymentData = await paymentRes.json();
+      if (!paymentData.success) throw new Error(paymentData.error || 'Payment failed');
 
-      await submitOrder();
+      // Create the order after successful payment
+      const orderNumber = await submitOrder();
+      
       onOrderSuccess();
-      alert(`Payment successful! New balance: ${formatPrice(data.newBalance)}`);
-      setCredit(data.newBalance);
+      alert(`Order #${orderNumber} placed! Status: Preparing. New balance: ${formatPrice(paymentData.newBalance)}`);
+      setCredit(paymentData.newBalance);
       clearAllItems();
     } catch (err) {
       setWispayError(err.message);

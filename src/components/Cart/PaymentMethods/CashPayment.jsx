@@ -1,4 +1,3 @@
-/* CashPayment.js */
 import React, { useState } from 'react';
 import { Button } from 'react-bootstrap';
 
@@ -7,13 +6,20 @@ const URL = process.env.REACT_APP_URL;
 const CashPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clearAllItems }) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Submit order and return order number
   const submitOrder = async () => {
+    const total = calculateTotal();
     const res = await fetch(`${URL}/api/order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        items: cart.map(i => ({ id: i.id, quantity: i.quantity })),
+        items: cart.map(i => ({ 
+          id: i.id, 
+          quantity: i.quantity,
+          price: i.price,
+          name: i.name
+        })),
+        paymentType: 'Cash',
+        total
       }),
     });
     const data = await res.json();
@@ -26,11 +32,7 @@ const CashPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clearA
     try {
       const orderNumber = await submitOrder();
       onOrderSuccess();
-      alert(
-        `Order #${orderNumber} placed! Processing Cash on Delivery for ${formatPrice(
-          calculateTotal()
-        )}`
-      );
+      alert(`Order #${orderNumber} placed! Status: Preparing. Total: ${formatPrice(calculateTotal())}`);
       clearAllItems();
     } catch (err) {
       alert(err.message);
