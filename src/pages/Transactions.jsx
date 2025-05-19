@@ -2,7 +2,7 @@ const Schedules = () => {
     return ( 
         <div>
             <h1>
-                Schedules
+                Transactions
             </h1>
         </div>
      );

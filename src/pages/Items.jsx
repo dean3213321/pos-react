@@ -19,6 +19,7 @@ const Items = () => {
   const [itemToDelete, setItemToDelete] = useState(null);
 
   useEffect(() => {
+    // fetch items
     const fetchItems = async () => {
       try {
         const URl = process.env.REACT_APP_URL || "";
@@ -30,6 +31,7 @@ const Items = () => {
         console.error(err);
       }
     };
+    // fetch categories for dropdown
     const fetchCategories = async () => {
       try {
         const URl = process.env.REACT_APP_URL || "";
@@ -146,7 +148,7 @@ const Items = () => {
     <div className="items-wrapper">
       <div className="items-header d-flex justify-content-between align-items-center mb-3">
         <h2>Items</h2>
-        <AddItemButton onItemAdded={(newItem) => setData(prev => [...prev, newItem])} />
+        <AddItemButton />
       </div>
       <div className="datatable-container">
         <DataTable
@@ -187,6 +189,7 @@ const Items = () => {
                 </Form.Group>
                 <Form.Group className="mb-3">
                   <Form.Label>Category</Form.Label>
+                  {/* Dropdown select for categories */}
                   <Form.Select name="category" defaultValue={currentItem.category || ''} required>
                     <option value="">Select category</option>
                     {categories.map(cat => (

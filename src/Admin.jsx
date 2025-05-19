@@ -21,10 +21,10 @@ const Admin = () => {
       color: "linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%)"
     },
     {
-      title: "Schedules",
-      description: "Set meal timings",
-      path: "/schedules",
-      icon: "⏰",
+      title: "Transactions",
+      description: "View order history and receipts",
+      path: "/Transactions",
+      icon: "🧾",
       color: "linear-gradient(135deg, #fff8e1 0%, #ffe0b2 100%)"
     },
     {

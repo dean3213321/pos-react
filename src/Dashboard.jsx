@@ -1,7 +1,7 @@
 // Dashboard.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Spinner, Alert, Image, Container } from 'react-bootstrap';
-import Cart from './components/Cart.jsx';
+import Cart from './components/Cart/Cart.jsx';
 
 const Dashboard = ({ selectedCategory }) => {
   const [items, setItems] = useState([]);

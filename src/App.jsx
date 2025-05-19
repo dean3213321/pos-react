@@ -9,7 +9,7 @@ import Admin from './Admin.jsx';
 import Category from './pages/Category.jsx';
 import Items from './pages/Items.jsx';
 import Inventory from './pages/Inventory.jsx';
-import Schedules from './pages/Schedule.jsx';
+import Transactions from './pages/Transactions.jsx';
 import { useState } from 'react';
 
 function App() {
@@ -34,7 +34,7 @@ function AppContent({ selectedCategory, onSelectCategory }) {
                       location.pathname === '/category' || 
                       location.pathname === '/items' || 
                       location.pathname === '/inventory' || 
-                      location.pathname === '/schedules';
+                      location.pathname === '/Transactions';
 
   return (
     <div className="container-fluid h-100 p-0">
@@ -52,7 +52,7 @@ function AppContent({ selectedCategory, onSelectCategory }) {
               <Route path="/category" element={<Category />} />
               <Route path="/items" element={<Items />} />
               <Route path="/inventory" element={<Inventory />} />
-              <Route path="/schedules" element={<Schedules />} />
+              <Route path="/Transactions" element={<Transactions />} />
             </Routes>
           </div>
         </div>
