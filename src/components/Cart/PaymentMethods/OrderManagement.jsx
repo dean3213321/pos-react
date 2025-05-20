@@ -1,37 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Badge } from 'react-bootstrap';
+import { Table, Button, Badge, Spinner, Alert } from 'react-bootstrap';
 
-const OrderManagement = ({ formatPrice }) => {
+const OrderManagement = () => {
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Built-in price formatter
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 2
+    }).format(price);
+  };
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    const fetchOrders = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${API_URL}/api/orders`);
+        
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${URL}/api/orders`);
-      const data = await res.json();
-      setOrders(data);
-    } catch (err) {
-      console.error('Failed to fetch orders:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        const data = await response.json();
+        setOrders(data);
+      } catch (err) {
+        console.error('Fetch error:', err);
+        setError(err.message || 'Failed to load orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [API_URL]);
 
   const updateStatus = async (orderNumber, status) => {
     try {
-      await fetch(`${URL}/api/orders/${orderNumber}/status`, {
+      const response = await fetch(`${API_URL}/api/orders/${orderNumber}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
-      fetchOrders();
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      // Refresh orders after update
+      setOrders(orders.map(order => 
+        order.orderNumber === orderNumber 
+          ? { ...order, status } 
+          : order
+      ));
     } catch (err) {
-      console.error('Failed to update status:', err);
+      console.error('Update error:', err);
+      setError(err.message || 'Status update failed');
     }
   };
 
@@ -45,66 +74,86 @@ const OrderManagement = ({ formatPrice }) => {
     return <Badge bg={variants[status]}>{status}</Badge>;
   };
 
-  if (loading) return <div>Loading orders...</div>;
+  if (loading) {
+    return (
+      <div className="text-center my-5">
+        <Spinner animation="border" />
+        <p>Loading orders...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="danger">
+        {error}
+        <Button variant="link" onClick={() => window.location.reload()}>
+          Refresh
+        </Button>
+      </Alert>
+    );
+  }
 
   return (
-    <div className="mt-4">
-      <h2>Order Management</h2>
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th>Order #</th>
-            <th>Items</th>
-            <th>Total</th>
-            <th>Payment</th>
-            <th>Status</th>
-            <th>Date</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map(order => (
-            <tr key={order.orderNumber}>
-              <td>{order.orderNumber}</td>
-              <td>
-                <ul className="mb-0">
-                  {order.items.map(item => (
-                    <li key={item.id}>
-                      {item.quantity}x {item.name} ({formatPrice(item.price)})
-                    </li>
-                  ))}
-                </ul>
-              </td>
-              <td>{formatPrice(order.total)}</td>
-              <td>
-                {order.paymentType} 
-                {order.rfid && <div className="text-muted small">{order.rfid}</div>}
-              </td>
-              <td>{getStatusBadge(order.status)}</td>
-              <td>{new Date(order.createdAt).toLocaleString()}</td>
-              <td>
-                <div className="d-flex flex-column gap-2">
-                  {order.status === 'Preparing' && (
-                    <Button variant="primary" size="sm" onClick={() => updateStatus(order.orderNumber, 'Serving')}>
-                      Mark as Serving
-                    </Button>
-                  )}
-                  {order.status === 'Serving' && (
-                    <Button variant="success" size="sm" onClick={() => updateStatus(order.orderNumber, 'Completed')}>
-                      Mark as Completed
-                    </Button>
-                  )}
-                  {order.status !== 'Cancelled' && order.status !== 'Completed' && (
-                    <Button variant="outline-danger" size="sm" onClick={() => updateStatus(order.orderNumber, 'Cancelled')}>
-                      Cancel Order
-                    </Button>
-                  )}
-                </div>
-              </td>
+    <div className="p-3">
+      <h2 className="mb-4">Order Management</h2>
+      
+      {orders.length === 0 ? (
+        <Alert variant="info">No orders found</Alert>
+      ) : (
+        <Table striped bordered hover responsive>
+          <thead>
+            <tr>
+              <th>Order #</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
+          </thead>
+          <tbody>
+            {orders.map(order => (
+              <tr key={order.orderNumber}>
+                <td>{order.orderNumber}</td>
+                <td>
+                  <ul className="mb-0">
+                    {order.items?.map(item => (
+                      <li key={item.id}>
+                        {item.quantity}x {item.name} ({formatPrice(item.price)})
+                      </li>
+                    ))}
+                  </ul>
+                </td>
+                <td>{formatPrice(order.total)}</td>
+                <td>{getStatusBadge(order.status)}</td>
+                <td>{new Date(order.createdAt).toLocaleString()}</td>
+                <td>
+                  <div className="d-flex gap-2">
+                    {order.status === 'Preparing' && (
+                      <Button size="sm" onClick={() => updateStatus(order.orderNumber, 'Serving')}>
+                        Serve
+                      </Button>
+                    )}
+                    {order.status === 'Serving' && (
+                      <Button variant="success" size="sm" 
+                        onClick={() => updateStatus(order.orderNumber, 'Completed')}>
+                        Complete
+                      </Button>
+                    )}
+                    {!['Completed', 'Cancelled'].includes(order.status) && (
+                      <Button variant="danger" size="sm"
+                        onClick={() => updateStatus(order.orderNumber, 'Cancelled')}>
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
     </div>
   );
 };

@@ -59,47 +59,74 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
   };
 
   const handleWispayPayment = async () => {
-    if (!rfid) {
-      setWispayError('Please enter RFID');
-      rfidInputRef.current?.focus();
-      return;
-    }
-    setIsProcessing(true);
-    setWispayError(null);
-    try {
-      const total = calculateTotal();
-      
-      // Process Wispay payment first
-      const paymentRes = await fetch(`${URL}/api/wispay/payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rfid,
-          amount: total.toString(),
-          empid: 'POS_USER',
-          username: 'POS Operator',
-          product_name: cart.map(i => i.name).join(', '),
-          quantity: cart.reduce((s, i) => s + i.quantity, 0),
-        }),
-      });
-      
-      if (!paymentRes.ok) throw new Error((await paymentRes.json()).error || 'Payment failed');
-      const paymentData = await paymentRes.json();
-      if (!paymentData.success) throw new Error(paymentData.error || 'Payment failed');
+  if (!rfid) {
+    setWispayError('Please enter RFID');
+    rfidInputRef.current?.focus();
+    return;
+  }
 
-      // Create the order after successful payment
-      const orderNumber = await submitOrder();
-      
-      onOrderSuccess();
-      alert(`Order #${orderNumber} placed! Status: Preparing. New balance: ${formatPrice(paymentData.newBalance)}`);
-      setCredit(paymentData.newBalance);
-      clearAllItems();
-    } catch (err) {
-      setWispayError(err.message);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  const total = calculateTotal();
+  const itemsList = cart.map(item => 
+    `${item.quantity}x ${item.name} - ${formatPrice(item.price * item.quantity)}`
+  ).join('\n');
+
+  const confirmationMessage = `💳 WISPAY PAYMENT CONFIRMATION 💳
+─────────────────────────
+ITEMS:
+${itemsList}
+─────────────────────────
+TOTAL: ${formatPrice(total)}
+CURRENT BALANCE: ${formatPrice(credit)}
+NEW BALANCE: ${formatPrice(credit - total)}
+─────────────────────────
+OK to confirm payment or Cancel to abort`;
+
+  if (!window.confirm(confirmationMessage)) {
+    return;
+  }
+
+  setIsProcessing(true);
+  setWispayError(null);
+  try {
+    const paymentRes = await fetch(`${URL}/api/wispay/payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rfid,
+        amount: total.toString(),
+        empid: 'POS_USER',
+        username: 'POS Operator',
+        product_name: cart.map(i => i.name).join(', '),
+        quantity: cart.reduce((s, i) => s + i.quantity, 0),
+      }),
+    });
+    
+    if (!paymentRes.ok) throw new Error((await paymentRes.json()).error || 'Payment failed');
+    const paymentData = await paymentRes.json();
+    if (!paymentData.success) throw new Error(paymentData.error || 'Payment failed');
+
+    const orderNumber = await submitOrder();
+    
+    onOrderSuccess();
+    alert(`💳 WISPAY ORDER CONFIRMED 💳
+─────────────────────────
+ORDER #: ${orderNumber}
+ITEMS:
+${itemsList}
+─────────────────────────
+TOTAL: ${formatPrice(total)}
+NEW BALANCE: ${formatPrice(paymentData.newBalance)}
+STATUS: 🟡 Preparing
+─────────────────────────
+Thank you for your purchase!`);
+    setCredit(paymentData.newBalance);
+    clearAllItems();
+  } catch (err) {
+    setWispayError(err.message);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   return (
     <div className="mb-3">

@@ -28,18 +28,45 @@ const CashPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clearA
   };
 
   const handleCashPayment = async () => {
-    setIsProcessing(true);
-    try {
-      const orderNumber = await submitOrder();
-      onOrderSuccess();
-      alert(`Order #${orderNumber} placed! Status: Preparing. Total: ${formatPrice(calculateTotal())}`);
-      clearAllItems();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  const total = calculateTotal();
+  const itemsList = cart.map(item => 
+    `${item.quantity}x ${item.name} - ${formatPrice(item.price * item.quantity)}`
+  ).join('\n');
+
+  const confirmationMessage = `🛒 CASH PAYMENT CONFIRMATION 🛒
+─────────────────────────
+ITEMS:
+${itemsList}
+─────────────────────────
+TOTAL: ${formatPrice(total)}
+─────────────────────────
+OK to confirm order or Cancel to abort`;
+
+  if (!window.confirm(confirmationMessage)) {
+    return;
+  }
+
+  setIsProcessing(true);
+  try {
+    const orderNumber = await submitOrder();
+    onOrderSuccess();
+    alert(`🛒 CASH ORDER CONFIRMED 🛒
+─────────────────────────
+ORDER #: ${orderNumber}
+ITEMS:
+${itemsList}
+─────────────────────────
+TOTAL: ${formatPrice(total)}
+STATUS: 🟡 Preparing
+─────────────────────────
+Please keep your receipt`);
+    clearAllItems();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   return (
     <Button

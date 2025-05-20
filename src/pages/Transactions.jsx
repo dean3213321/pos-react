@@ -1,11 +1,11 @@
-const Schedules = () => {
+import OrderManagement from "../components/Cart/PaymentMethods/OrderManagement";
+
+const Transactions = () => {
     return ( 
         <div>
-            <h1>
-                Transactions
-            </h1>
+            <OrderManagement />
         </div>
      );
 }
  
-export default Schedules;
+export default Transactions;
