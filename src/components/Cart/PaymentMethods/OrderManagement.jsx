@@ -1,158 +1,203 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Badge, Spinner, Alert } from 'react-bootstrap';
+import { DataTable, DT } from '../../../utils/datatables-imports.jsx';
+import { Button, Spinner, Alert, ButtonGroup } from 'react-bootstrap';
+
+DataTable.use(DT);
 
 const OrderManagement = () => {
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
   const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'daily', 'weekly', 'monthly'
 
-  // Built-in price formatter
+  // Price formatter
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-PH', {
       style: 'currency',
       currency: 'PHP',
-      minimumFractionDigits: 2
+      minimumFractionDigits: 2,
     }).format(price);
   };
 
+  // Filter orders based on time filter
+  const filterOrders = (orders, filter) => {
+    const now = new Date();
+    let startDate;
+    let endDate;
+
+    switch (filter) {
+      case 'daily': {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        break;
+      }
+      case 'weekly': {
+        // ISO week: Monday start
+        const dayIndex = now.getDay(); // 0 Sun - 6 Sat
+        const diffToMonday = (dayIndex + 6) % 7;
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - diffToMonday);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      }
+      case 'monthly': {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+      }
+      default:
+        return orders;
+    }
+
+    return orders.filter((order) => {
+      const orderDate = new Date(order.createdAt);
+      return orderDate >= startDate && orderDate <= endDate;
+    });
+  };
+
+  // Apply filter when timeFilter or orders change
+  useEffect(() => {
+    setFilteredOrders(filterOrders(orders, timeFilter));
+  }, [timeFilter, orders]);
+
+  // Fetch orders
   useEffect(() => {
     const fetchOrders = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${API_URL}/api/orders`);
-        
-        if (!response.ok) {
-          throw new Error(`Server error: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const res = await fetch(`${API_URL}/api/orders`);
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        const data = await res.json();
         setOrders(data);
       } catch (err) {
-        console.error('Fetch error:', err);
+        console.error(err);
         setError(err.message || 'Failed to load orders');
       } finally {
         setLoading(false);
       }
     };
-
     fetchOrders();
   }, [API_URL]);
 
+  // Update status
   const updateStatus = async (orderNumber, status) => {
     try {
-      const response = await fetch(`${API_URL}/api/orders/${orderNumber}/status`, {
+      const res = await fetch(`${API_URL}/api/orders/${orderNumber}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
-
-      // Refresh orders after update
-      setOrders(orders.map(order => 
-        order.orderNumber === orderNumber 
-          ? { ...order, status } 
-          : order
-      ));
+      if (!res.ok) throw new Error('Failed to update status');
+      const updated = orders.map((o) => (o.orderNumber === orderNumber ? { ...o, status } : o));
+      setOrders(updated);
     } catch (err) {
-      console.error('Update error:', err);
+      console.error(err);
       setError(err.message || 'Status update failed');
     }
   };
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      Preparing: 'warning',
-      Serving: 'primary',
-      Completed: 'success',
-      Cancelled: 'danger'
+  // Delegate button clicks
+  useEffect(() => {
+    const handler = (e) => {
+      const serve = e.target.closest('.serve-btn');
+      const complete = e.target.closest('.complete-btn');
+      const cancel = e.target.closest('.cancel-btn');
+      if (serve) updateStatus(serve.dataset.id, 'Serving');
+      if (complete) updateStatus(complete.dataset.id, 'Completed');
+      if (cancel) updateStatus(cancel.dataset.id, 'Cancelled');
     };
-    return <Badge bg={variants[status]}>{status}</Badge>;
-  };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [orders]);
 
-  if (loading) {
-    return (
-      <div className="text-center my-5">
-        <Spinner animation="border" />
-        <p>Loading orders...</p>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="text-center my-5">
+      <Spinner animation="border" />
+      <p>Loading orders...</p>
+    </div>
+  );
 
-  if (error) {
-    return (
-      <Alert variant="danger">
-        {error}
-        <Button variant="link" onClick={() => window.location.reload()}>
-          Refresh
-        </Button>
-      </Alert>
-    );
-  }
+  if (error) return (
+    <Alert variant="danger">
+      {error}
+      <Button variant="link" onClick={() => window.location.reload()}>Refresh</Button>
+    </Alert>
+  );
+
+  const columns = [
+    { title: 'Order #', data: 'orderNumber' },
+    {
+      title: 'Items',
+      data: 'items',
+      render: (items) => {
+        if (!items) return '';
+        return '<ul class="mb-0">' +
+          items.map(i => `<li>${i.quantity}x ${i.name} (${formatPrice(i.price)})</li>`).join('') +
+          '</ul>';
+      },
+    },
+    { title: 'Total', data: 'total', render: (t) => formatPrice(t) },
+    {
+      title: 'Status',
+      data: 'status',
+      render: (s) => {
+        const variants = { Preparing: 'warning', Serving: 'primary', Completed: 'success', Cancelled: 'danger' };
+        return `<span class=\"badge bg-${variants[s]}\">${s}</span>`;
+      },
+    },
+    { title: 'Date', data: 'createdAt', render: (d) => new Date(d).toLocaleString() },
+    {
+      title: 'Actions',
+      data: null,
+      orderable: false,
+      searchable: false,
+      render: (data, type, row) => {
+        const btns = [];
+        if (row.status === 'Preparing') btns.push(`<button class=\"btn btn-sm btn-secondary serve-btn\" data-id=\"${row.orderNumber}\">Serve</button>`);
+        if (row.status === 'Serving') btns.push(`<button class=\"btn btn-sm btn-success complete-btn\" data-id=\"${row.orderNumber}\">Complete</button>`);
+        if (!['Completed', 'Cancelled'].includes(row.status)) btns.push(`<button class=\"btn btn-sm btn-danger cancel-btn\" data-id=\"${row.orderNumber}\">Cancel</button>`);
+        return `<div class=\"d-flex gap-2\">${btns.join('')}</div>`;
+      },
+    },
+  ];
 
   return (
     <div className="p-3">
-      <h2 className="mb-4">Order Management</h2>
-      
-      {orders.length === 0 ? (
-        <Alert variant="info">No orders found</Alert>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Order Management</h2>
+        <div className="d-flex align-items-center gap-2">
+          <span>Filter:</span>
+          <ButtonGroup>
+            <Button variant={timeFilter === 'all' ? 'primary' : 'outline-primary'} onClick={() => setTimeFilter('all')}>All Orders</Button>
+            <Button variant={timeFilter === 'daily' ? 'primary' : 'outline-primary'} onClick={() => setTimeFilter('daily')}>Today</Button>
+            <Button variant={timeFilter === 'weekly' ? 'primary' : 'outline-primary'} onClick={() => setTimeFilter('weekly')}>This Week</Button>
+            <Button variant={timeFilter === 'monthly' ? 'primary' : 'outline-primary'} onClick={() => setTimeFilter('monthly')}>This Month</Button>
+          </ButtonGroup>
+        </div>
+      </div>
+
+      {filteredOrders.length === 0 ? (
+        <Alert variant="info">No orders found for the selected filter</Alert>
       ) : (
-        <Table striped bordered hover responsive>
-          <thead>
-            <tr>
-              <th>Order #</th>
-              <th>Items</th>
-              <th>Total</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map(order => (
-              <tr key={order.orderNumber}>
-                <td>{order.orderNumber}</td>
-                <td>
-                  <ul className="mb-0">
-                    {order.items?.map(item => (
-                      <li key={item.id}>
-                        {item.quantity}x {item.name} ({formatPrice(item.price)})
-                      </li>
-                    ))}
-                  </ul>
-                </td>
-                <td>{formatPrice(order.total)}</td>
-                <td>{getStatusBadge(order.status)}</td>
-                <td>{new Date(order.createdAt).toLocaleString()}</td>
-                <td>
-                  <div className="d-flex gap-2">
-                    {order.status === 'Preparing' && (
-                      <Button size="sm" onClick={() => updateStatus(order.orderNumber, 'Serving')}>
-                        Serve
-                      </Button>
-                    )}
-                    {order.status === 'Serving' && (
-                      <Button variant="success" size="sm" 
-                        onClick={() => updateStatus(order.orderNumber, 'Completed')}>
-                        Complete
-                      </Button>
-                    )}
-                    {!['Completed', 'Cancelled'].includes(order.status) && (
-                      <Button variant="danger" size="sm"
-                        onClick={() => updateStatus(order.orderNumber, 'Cancelled')}>
-                        Cancel
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <DataTable
+          className="display cell-border"
+          columns={columns}
+          data={filteredOrders}
+          options={{
+            responsive: true,
+            dom: '<"d-flex justify-content-between"lf>rt<"d-flex justify-content-between"ip>B',
+            buttons: ['copy', 'csv', 'excel', 'pdf', 'print', 'colvis'],
+            pageLength: 10,
+            lengthChange: true,
+            autoWidth: false,
+          }}
+        />
       )}
     </div>
   );
