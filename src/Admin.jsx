@@ -30,8 +30,8 @@ const Admin = () => {
     {
       title: "Inventory",
       description: "Track stock levels",
-      path: "/inventory",
-      icon: "📦",
+      path: "/Wispay",
+      icon: "💳",
       color: "linear-gradient(135deg, #f1f8e9 0%, #dcedc8 100%)"
     }
   ];

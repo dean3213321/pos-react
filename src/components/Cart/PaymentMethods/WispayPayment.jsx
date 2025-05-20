@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button, Modal, ListGroup, Spinner } from 'react-bootstrap';
 
-const URL = process.env.REACT_APP_URL || 'http://localhost:5000';
+const URL = process.env.REACT_APP_URL || '';
 
 const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clearAllItems }) => {
   const [rfid, setRfid] = useState('');

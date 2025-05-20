@@ -8,7 +8,7 @@ import Dashboard from './Dashboard.jsx';
 import Admin from './Admin.jsx';
 import Category from './pages/Category.jsx';
 import Items from './pages/Items.jsx';
-import Inventory from './pages/Inventory.jsx';
+import Wispay from './pages/Wispay.jsx';
 import Transactions from './pages/Transactions.jsx';
 import { useState } from 'react';
 
@@ -33,7 +33,7 @@ function AppContent({ selectedCategory, onSelectCategory }) {
   const isAdminRoute = location.pathname.startsWith('/admin') || 
                       location.pathname === '/category' || 
                       location.pathname === '/items' || 
-                      location.pathname === '/inventory' || 
+                      location.pathname === '/Wispay' || 
                       location.pathname === '/Transactions';
 
   return (
@@ -51,7 +51,7 @@ function AppContent({ selectedCategory, onSelectCategory }) {
               <Route path="/admin" element={<Admin />} />
               <Route path="/category" element={<Category />} />
               <Route path="/items" element={<Items />} />
-              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/Wispay" element={<Wispay />} />
               <Route path="/Transactions" element={<Transactions />} />
             </Routes>
           </div>
