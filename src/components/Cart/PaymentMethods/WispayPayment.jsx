@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Button, Modal, ListGroup, Spinner, Alert } from 'react-bootstrap';
+import { Button, Modal, ListGroup, Spinner } from 'react-bootstrap';
 
 const URL = process.env.REACT_APP_URL || 'http://localhost:5000';
 
@@ -19,7 +19,8 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
     rfidInputRef.current?.focus();
   }, []);
 
-  const total = useMemo(() => calculateTotal(), [cart, calculateTotal]);
+  const total = useMemo(() => calculateTotal(), [calculateTotal]);
+
   const itemsListDisplay = useMemo(() => (
     cart.map(item => (
       <ListGroup.Item key={item.id} className="d-flex justify-content-between align-items-center border-0 px-0">
@@ -28,6 +29,7 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
       </ListGroup.Item>
     ))
   ), [cart, formatPrice]);
+
   const itemsForApi = useMemo(() => (
     cart.map(i => ({ id: i.id, quantity: i.quantity, price: i.price, name: i.name }))
   ), [cart]);
@@ -46,7 +48,8 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to fetch credit');
       setCredit(data.credit);
     } catch (err) {
-      setErrorMessage(err.message);
+      console.error(err);
+      setErrorMessage('An error occurred while checking credit.');
       setShowErrorModal(true);
       setCredit(null);
     } finally {
@@ -76,15 +79,14 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
     setIsProcessing(true);
     setErrorMessage('');
     try {
-      // Perform payment (balance check optional)
       const paymentRes = await fetch(`${URL}/api/wispay/payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rfid,
           amount: total.toString(),
-          empid: 'POS_USER',
-          username: 'POS Operator',
+          empid: process.env.REACT_APP_EMP_ID || 'POS_USER',
+          username: process.env.REACT_APP_EMP_USERNAME || 'POS Operator',
           product_name: cart.map(i => i.name).join(', '),
           quantity: cart.reduce((s, i) => s + i.quantity, 0),
         }),
@@ -96,14 +98,20 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
 
       setOrderData({
         orderNumber: orderResult.orderNumber,
-        itemsDisplay: itemsListDisplay,
+        itemsDisplay: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price
+        })),
         total,
         newBalance: paymentData.newBalance
       });
       onOrderSuccess();
       setShowSuccessModal(true);
     } catch (err) {
-      setErrorMessage(err.message || 'An unexpected error occurred.');
+      console.error(err);
+      setErrorMessage('An error occurred while processing your payment. Please try again.');
       setShowErrorModal(true);
     } finally {
       setIsProcessing(false);
@@ -128,6 +136,7 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
             value={rfid}
             onChange={e => setRfid(e.target.value)}
             ref={rfidInputRef}
+            disabled={isChecking}
           />
           <button
             className="btn btn-outline-secondary"
@@ -154,14 +163,8 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
       >
         {isProcessing ? (
           <>
-            <Spinner
-              as="span"
-              animation="border"
-              size="sm"
-              role="status"
-              aria-hidden="true"
-              className="me-2"
-            />Processing…
+            <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+            Processing…
           </>
         ) : (
           <>
@@ -203,8 +206,17 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
           <Button variant="secondary" onClick={handleCloseConfirmModal}>
             <i className="bi bi-x-circle me-1"></i>Cancel
           </Button>
-          <Button variant="success" onClick={handleConfirmOrder}>
-            <i className="bi bi-check-circle-fill me-1"></i>Confirm Payment
+          <Button variant="success" onClick={handleConfirmOrder} disabled={isProcessing}>
+            {isProcessing ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" className="me-2" />
+                Processing…
+              </>
+            ) : (
+              <>
+                <i className="bi bi-check-circle-fill me-1"></i>Confirm Payment
+              </>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -225,7 +237,12 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
             </ListGroup>
             <strong>ITEMS:</strong>
             <ListGroup variant="flush" className="mb-3 order-items-scrollable">
-              {orderData.itemsDisplay}
+              {orderData.itemsDisplay.map(item => (
+                <ListGroup.Item key={item.id} className="d-flex justify-content-between align-items-center border-0 px-0">
+                  <span>{item.quantity}x {item.name}</span>
+                  <span>{formatPrice(item.price * item.quantity)}</span>
+                </ListGroup.Item>
+              ))}
             </ListGroup>
             <div className="d-flex justify-content-between fw-bold fs-5 mb-2">
               <span>TOTAL:</span><span>{formatPrice(orderData.total)}</span>
@@ -239,7 +256,9 @@ const WispayPayment = ({ cart, calculateTotal, formatPrice, onOrderSuccess, clea
               <i className="bi bi-hourglass-split me-2 fs-4"></i>
               <div><strong>STATUS:</strong> Preparing</div>
             </div>
-            <p className="mt-3 text-muted small">Please keep this confirmation for your records.{credit !== null ? ' Your balance has been updated.' : ''}</p>
+            <p className="mt-3 text-muted small">
+              Please keep this confirmation for your records.{credit !== null ? ' Your balance has been updated.' : ''}
+            </p>
           </Modal.Body>
           <Modal.Footer>
             <Button variant="primary" onClick={handleCloseSuccessModal} className="w-100">

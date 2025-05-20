@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DataTable, DT } from '../../../utils/datatables-imports.jsx';
 import { Button, Spinner, Alert, ButtonGroup } from 'react-bootstrap';
 
 DataTable.use(DT);
 
 const OrderManagement = () => {
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+  const API_URL = process.env.REACT_APP_URL || '';
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,29 +13,38 @@ const OrderManagement = () => {
   const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'daily', 'weekly', 'monthly'
 
   // Price formatter
-  const formatPrice = (price) => {
+  const formatPrice = useCallback((price) => {
     return new Intl.NumberFormat('en-PH', {
       style: 'currency',
       currency: 'PHP',
       minimumFractionDigits: 2,
     }).format(price);
-  };
+  }, []);
+
+  // Status priority sorter: Preparing & Serving first
+  const sortByStatusPriority = useCallback((ordersList) => {
+    const priority = { Preparing: 1, Serving: 2, Completed: 3, Cancelled: 4 };
+    return [...ordersList].sort((a, b) => {
+      const pa = priority[a.status] || 99;
+      const pb = priority[b.status] || 99;
+      if (pa !== pb) return pa - pb;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, []);
 
   // Filter orders based on time filter
-  const filterOrders = (orders, filter) => {
+  const filterOrders = useCallback((ordersList, filter) => {
     const now = new Date();
     let startDate;
     let endDate;
 
     switch (filter) {
-      case 'daily': {
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      case 'daily':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
         break;
-      }
       case 'weekly': {
-        // ISO week: Monday start
-        const dayIndex = now.getDay(); // 0 Sun - 6 Sat
+        const dayIndex = now.getDay(); // 0 = Sunday
         const diffToMonday = (dayIndex + 6) % 7;
         startDate = new Date(now);
         startDate.setDate(now.getDate() - diffToMonday);
@@ -45,25 +54,26 @@ const OrderManagement = () => {
         endDate.setHours(23, 59, 59, 999);
         break;
       }
-      case 'monthly': {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      case 'monthly':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         break;
-      }
       default:
-        return orders;
+        return sortByStatusPriority(ordersList);
     }
 
-    return orders.filter((order) => {
-      const orderDate = new Date(order.createdAt);
-      return orderDate >= startDate && orderDate <= endDate;
+    const filtered = ordersList.filter((order) => {
+      const date = new Date(order.createdAt);
+      return date >= startDate && date <= endDate;
     });
-  };
+
+    return sortByStatusPriority(filtered);
+  }, [sortByStatusPriority]);
 
   // Apply filter when timeFilter or orders change
   useEffect(() => {
     setFilteredOrders(filterOrders(orders, timeFilter));
-  }, [timeFilter, orders]);
+  }, [timeFilter, orders, filterOrders]);
 
   // Fetch orders
   useEffect(() => {
@@ -86,7 +96,7 @@ const OrderManagement = () => {
   }, [API_URL]);
 
   // Update status
-  const updateStatus = async (orderNumber, status) => {
+  const updateStatus = useCallback(async (orderNumber, status) => {
     try {
       const res = await fetch(`${API_URL}/api/orders/${orderNumber}/status`, {
         method: 'PATCH',
@@ -94,13 +104,12 @@ const OrderManagement = () => {
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error('Failed to update status');
-      const updated = orders.map((o) => (o.orderNumber === orderNumber ? { ...o, status } : o));
-      setOrders(updated);
+      setOrders((prev) => prev.map((o) => (o.orderNumber === orderNumber ? { ...o, status } : o)));
     } catch (err) {
       console.error(err);
       setError(err.message || 'Status update failed');
     }
-  };
+  }, [API_URL]);
 
   // Delegate button clicks
   useEffect(() => {
@@ -114,7 +123,7 @@ const OrderManagement = () => {
     };
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
-  }, [orders]);
+  }, [updateStatus]);
 
   if (loading) return (
     <div className="text-center my-5">
@@ -132,39 +141,24 @@ const OrderManagement = () => {
 
   const columns = [
     { title: 'Order #', data: 'orderNumber' },
-    {
-      title: 'Items',
-      data: 'items',
-      render: (items) => {
-        if (!items) return '';
-        return '<ul class="mb-0">' +
-          items.map(i => `<li>${i.quantity}x ${i.name} (${formatPrice(i.price)})</li>`).join('') +
-          '</ul>';
-      },
+    { title: 'Items', data: 'items', render: (items) => items ?
+        `<ul class="mb-0">${items.map(i => `<li>${i.quantity}x ${i.name} (${formatPrice(i.price)})</li>`).join('')}</ul>` : ''
     },
     { title: 'Total', data: 'total', render: (t) => formatPrice(t) },
-    {
-      title: 'Status',
-      data: 'status',
-      render: (s) => {
+    { title: 'Status', data: 'status', render: (s) => {
         const variants = { Preparing: 'warning', Serving: 'primary', Completed: 'success', Cancelled: 'danger' };
-        return `<span class=\"badge bg-${variants[s]}\">${s}</span>`;
-      },
+        return `<span class="badge bg-${variants[s]}">${s}</span>`;
+      }
     },
     { title: 'Date', data: 'createdAt', render: (d) => new Date(d).toLocaleString() },
-    {
-      title: 'Actions',
-      data: null,
-      orderable: false,
-      searchable: false,
-      render: (data, type, row) => {
+    { title: 'Actions', data: null, orderable: false, searchable: false, render: (data, type, row) => {
         const btns = [];
-        if (row.status === 'Preparing') btns.push(`<button class=\"btn btn-sm btn-secondary serve-btn\" data-id=\"${row.orderNumber}\">Serve</button>`);
-        if (row.status === 'Serving') btns.push(`<button class=\"btn btn-sm btn-success complete-btn\" data-id=\"${row.orderNumber}\">Complete</button>`);
-        if (!['Completed', 'Cancelled'].includes(row.status)) btns.push(`<button class=\"btn btn-sm btn-danger cancel-btn\" data-id=\"${row.orderNumber}\">Cancel</button>`);
-        return `<div class=\"d-flex gap-2\">${btns.join('')}</div>`;
-      },
-    },
+        if (row.status === 'Preparing') btns.push(`<button class="btn btn-sm btn-secondary serve-btn" data-id="${row.orderNumber}">Serve</button>`);
+        if (row.status === 'Serving') btns.push(`<button class="btn btn-sm btn-success complete-btn" data-id="${row.orderNumber}">Complete</button>`);
+        if (!['Completed','Cancelled'].includes(row.status)) btns.push(`<button class="btn btn-sm btn-danger cancel-btn" data-id="${row.orderNumber}">Cancel</button>`);
+        return `<div class="d-flex gap-2">${btns.join('')}</div>`;
+      }
+    }
   ];
 
   return (
