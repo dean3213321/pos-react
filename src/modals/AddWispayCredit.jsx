@@ -63,39 +63,45 @@ const AddWispayCredit = ({ buttonText = "Add Credit", buttonVariant = "primary",
     }, 500);
 
     return () => clearTimeout(debounceTimer);
-  }, [rfid, showModal]);
+  }, [rfid, showModal, URL]); // Added URL to dependency array
 
   // Add credit to user account
   const handleAddCredit = async () => {
-    if (!rfid || !amount) return;
-    setAddingCredit(true);
-    setError(null);
+  if (!rfid || !amount) return;
+  setAddingCredit(true);
+  setError(null);
+  
+  try {
+    const res = await fetch(`${URL}/api/wispay/credit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rfid,
+        amount,
+        empid: process.env.REACT_APP_EMP_ID || 'POS_USER',
+        username: process.env.REACT_APP_EMP_USERNAME || 'POS Operator',
+      }),
+    });
     
-    try {
-      const res = await fetch(`${URL}/api/wispay/credit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rfid,
-          amount,
-          empid: process.env.REACT_APP_EMP_ID || 'POS_USER',
-          username: process.env.REACT_APP_EMP_USERNAME || 'POS Operator',
-        }),
-      });
-      
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to add credit');
-      
-      setMessage(`Success! New balance: ${parseFloat(data.newBalance).toFixed(2)}`);
-      setCredit(parseFloat(data.newBalance));
-      setAmount('');
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Error adding credit');
-    } finally {
-      setAddingCredit(false);
-    }
-  };
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to add credit');
+    
+    // Corrected this line to use data.balance.new instead of data.newBalance
+    setMessage(`Success! New balance: ${data.balance.new}`);
+    setCredit(parseFloat(data.balance.new));
+    setAmount('');
+    
+    // Auto-close modal after 2.5 seconds
+    setTimeout(() => {
+      handleClose();
+    }, 2500);
+  } catch (err) {
+    console.error(err);
+    setError(err.message || 'Error adding credit');
+  } finally {
+    setAddingCredit(false);
+  }
+};
 
   // Reset form when modal closes
   const handleClose = () => {

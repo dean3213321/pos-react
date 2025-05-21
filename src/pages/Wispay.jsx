@@ -4,27 +4,53 @@ import AddWispayCredit from "../modals/AddWispayCredit.jsx";
 
 DataTable.use(DT);
 
+const CACHE_KEY = "wispayUsers_cache";
+const CACHE_TTL = 1000 * 60 * 20; // 45 minutes
+
 const Wispay = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // Added error state
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { timestamp, users } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_TTL) {
+            // Reset timer on cache use
+            localStorage.setItem(
+              CACHE_KEY,
+              JSON.stringify({ timestamp: Date.now(), users })
+            );
+            setData(users);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // No valid cache; fetch from server
         const URl = process.env.REACT_APP_URL || "";
         const res = await fetch(`${URl}/api/wispay/user`);
         if (!res.ok) throw new Error("Failed to fetch users");
         const response = await res.json();
-        setData(response.users || []);
-        setError(null); // Clear any previous errors
+        const users = response.users || [];
+
+        setData(users);
+        localStorage.setItem(
+          CACHE_KEY,
+          JSON.stringify({ timestamp: Date.now(), users })
+        );
+        setError(null);
       } catch (err) {
         console.error(err);
-        setError(err.message); // Set error message
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
+
     fetchUsers();
   }, []);
 
@@ -37,8 +63,8 @@ const Wispay = () => {
     {
       title: "Balance",
       data: "balance",
-      render: (data) => `₱${parseFloat(data).toFixed(2)}`
-    }
+      render: (data) => `₱${parseFloat(data).toFixed(2)}`,
+    },
   ];
 
   return (
@@ -51,7 +77,11 @@ const Wispay = () => {
       <div className="datatable-container">
         {loading ? (
           <div className="text-center my-5 py-5">
-            <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+            <div
+              className="spinner-border text-primary"
+              role="status"
+              style={{ width: "3rem", height: "3rem" }}
+            >
               <span className="visually-hidden">Loading...</span>
             </div>
             <p className="mt-3">Loading user data...</p>
@@ -77,9 +107,9 @@ const Wispay = () => {
               columnDefs: [
                 {
                   targets: -1,
-                  className: "dt-right"
-                }
-              ]
+                  className: "dt-right",
+                },
+              ],
             }}
           />
         )}
