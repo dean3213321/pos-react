@@ -1,58 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useRef } from "react";
 import { DataTable, DT } from "../utils/datatables-imports";
 import AddWispayCredit from "../modals/AddWispayCredit.jsx";
+import { useWispayContext } from "../utils/WispayContext";
 
 DataTable.use(DT);
 
-const CACHE_KEY = "wispayUsers_cache";
-const CACHE_TTL = 1000 * 60 * 20; // 45 minutes
-
 const Wispay = () => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { timestamp, users } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_TTL) {
-            // Reset timer on cache use
-            localStorage.setItem(
-              CACHE_KEY,
-              JSON.stringify({ timestamp: Date.now(), users })
-            );
-            setData(users);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // No valid cache; fetch from server
-        const URl = process.env.REACT_APP_URL || "";
-        const res = await fetch(`${URl}/api/wispay/user`);
-        if (!res.ok) throw new Error("Failed to fetch users");
-        const response = await res.json();
-        const users = response.users || [];
-
-        setData(users);
-        localStorage.setItem(
-          CACHE_KEY,
-          JSON.stringify({ timestamp: Date.now(), users })
-        );
-        setError(null);
-      } catch (err) {
-        console.error(err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, []);
+  const { wispayData: data, lastUpdated, loading, error, fetchFreshData } = useWispayContext();
+  const dataTableRef = useRef(null);
 
   const columns = [
     { title: "ID", data: "id", visible: false },
@@ -70,12 +25,19 @@ const Wispay = () => {
   return (
     <div className="wispay-wrapper">
       <div className="wispay-header d-flex justify-content-between align-items-center mb-3">
-        <h2>Wispay Users</h2>
-        <AddWispayCredit />
+        <div>
+          <h2>Wispay Users</h2>
+          {lastUpdated && (
+            <small className="text-muted">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </small>
+          )}
+        </div>
+        <AddWispayCredit onSuccess={fetchFreshData} />
       </div>
 
       <div className="datatable-container">
-        {loading ? (
+        {loading && !data.length ? (
           <div className="text-center my-5 py-5">
             <div
               className="spinner-border text-primary"
@@ -91,27 +53,37 @@ const Wispay = () => {
             Error loading data: {error}
           </div>
         ) : (
-          <DataTable
-            className="display cell-border"
-            columns={columns}
-            data={data}
-            options={{
-              responsive: true,
-              select: true,
-              dom: '<"d-flex justify-content-between"lf>rt<"d-flex justify-content-between"ip>B',
-              buttons: ["copy", "csv", "excel", "pdf", "print", "colvis"],
-              autoWidth: false,
-              pageLength: 10,
-              lengthChange: true,
-              order: [[1, "asc"]],
-              columnDefs: [
-                {
-                  targets: -1,
-                  className: "dt-right",
-                },
-              ],
-            }}
-          />
+          <>
+            <DataTable
+              className="display cell-border"
+              columns={columns}
+              data={data}
+              ref={dataTableRef}
+              options={{
+                responsive: true,
+                select: true,
+                dom: '<"d-flex justify-content-between"lf>rt<"d-flex justify-content-between"ip>B',
+                buttons: ["copy", "csv", "excel", "pdf", "print", "colvis"],
+                autoWidth: false,
+                pageLength: 10,
+                lengthChange: true,
+                order: [[1, "asc"]],
+                columnDefs: [
+                  {
+                    targets: -1,
+                    className: "dt-right",
+                  },
+                ],
+              }}
+            />
+            {data.length > 0 && (
+              <div className="text-end mt-2 text-muted small">
+                Showing {data.length} users
+                {lastUpdated && ` • Updated at ${lastUpdated.toLocaleTimeString()}`}
+                <span className="ms-2">(Balances update every 5 seconds)</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

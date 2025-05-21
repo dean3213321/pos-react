@@ -11,20 +11,23 @@ import Items from './pages/Items.jsx';
 import Wispay from './pages/Wispay.jsx';
 import Transactions from './pages/Transactions.jsx';
 import { useState } from 'react';
+import { WispayProvider } from './utils/WispayContext.jsx';
 
 function App() {
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   return (
-    <Router>
-      <div className="d-flex flex-column vh-100">
-        <Navbar />
-        <AppContent 
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-        />
-      </div>
-    </Router>
+    <WispayProvider>
+      <Router>
+        <div className="d-flex flex-column vh-100">
+          <Navbar />
+          <AppContent 
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
+        </div>
+      </Router>
+    </WispayProvider>
   );
 }
 

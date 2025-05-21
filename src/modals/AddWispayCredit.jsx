@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Modal, Form, InputGroup, Spinner, Alert } from 'react-bootstrap';
 
-const AddWispayCredit = ({ buttonText = "Add Credit", buttonVariant = "primary", buttonSize = "md" }) => {
+const AddWispayCredit = ({ buttonText = "Add Credit", buttonVariant = "primary", buttonSize = "md", onSuccess }) => {
   const [showModal, setShowModal] = useState(false);
   const [rfid, setRfid] = useState('');
   const [name, setName] = useState('');
@@ -63,45 +63,49 @@ const AddWispayCredit = ({ buttonText = "Add Credit", buttonVariant = "primary",
     }, 500);
 
     return () => clearTimeout(debounceTimer);
-  }, [rfid, showModal, URL]); // Added URL to dependency array
+  }, [rfid, showModal, URL]);
 
   // Add credit to user account
   const handleAddCredit = async () => {
-  if (!rfid || !amount) return;
-  setAddingCredit(true);
-  setError(null);
-  
-  try {
-    const res = await fetch(`${URL}/api/wispay/credit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        rfid,
-        amount,
-        empid: process.env.REACT_APP_EMP_ID || 'POS_USER',
-        username: process.env.REACT_APP_EMP_USERNAME || 'POS Operator',
-      }),
-    });
+    if (!rfid || !amount) return;
+    setAddingCredit(true);
+    setError(null);
     
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to add credit');
-    
-    // Corrected this line to use data.balance.new instead of data.newBalance
-    setMessage(`Success! New balance: ${data.balance.new}`);
-    setCredit(parseFloat(data.balance.new));
-    setAmount('');
-    
-    // Auto-close modal after 2.5 seconds
-    setTimeout(() => {
-      handleClose();
-    }, 2500);
-  } catch (err) {
-    console.error(err);
-    setError(err.message || 'Error adding credit');
-  } finally {
-    setAddingCredit(false);
-  }
-};
+    try {
+      const res = await fetch(`${URL}/api/wispay/credit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rfid,
+          amount,
+          empid: process.env.REACT_APP_EMP_ID || 'POS_USER',
+          username: process.env.REACT_APP_EMP_USERNAME || 'POS Operator',
+        }),
+      });
+      
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to add credit');
+      
+      setMessage(`Success! New balance: ${data.balance.new}`);
+      setCredit(parseFloat(data.balance.new));
+      setAmount('');
+      
+      // Call success callback if provided
+      if (onSuccess && typeof onSuccess === 'function') {
+        onSuccess();
+      }
+      
+      // Auto-close modal after 2.5 seconds
+      setTimeout(() => {
+        handleClose();
+      }, 2500);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Error adding credit');
+    } finally {
+      setAddingCredit(false);
+    }
+  };
 
   // Reset form when modal closes
   const handleClose = () => {
