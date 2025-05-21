@@ -1,125 +1,90 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Card, Form, Button, InputGroup, Spinner, Alert } from 'react-bootstrap';
+import React, { useState, useEffect } from "react";
+import { DataTable, DT } from "../utils/datatables-imports";
+import AddWispayCredit from "../modals/AddWispayCredit.jsx";
 
-const URL = process.env.REACT_APP_URL || '';
+DataTable.use(DT);
 
 const Wispay = () => {
-  const [rfid, setRfid] = useState('');
-  const [name, setName] = useState('');
-  const [credit, setCredit] = useState(null);
-  const [amount, setAmount] = useState('');
-  const [loadingUser, setLoadingUser] = useState(false);
-  const [addingCredit, setAddingCredit] = useState(false);
-  const [message, setMessage] = useState(null);
-  const [error, setError] = useState(null);
-  const rfidRef = useRef(null);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); // Added error state
 
   useEffect(() => {
-    rfidRef.current?.focus();
+    const fetchUsers = async () => {
+      try {
+        const URl = process.env.REACT_APP_URL || "";
+        const res = await fetch(`${URl}/api/wispay/user`);
+        if (!res.ok) throw new Error("Failed to fetch users");
+        const response = await res.json();
+        setData(response.users || []);
+        setError(null); // Clear any previous errors
+      } catch (err) {
+        console.error(err);
+        setError(err.message); // Set error message
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
   }, []);
 
-  const handleScan = async () => {
-    if (!rfid) return;
-    setLoadingUser(true);
-    setError(null);
-    setMessage(null);
-    try {
-      // Fetch credit and user info (assumes API returns name and credit)
-      const res = await fetch(`${URL}/api/wispay/credit?rfid=${encodeURIComponent(rfid)}`);
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to fetch user info');
-      }
-      setName(data.username || 'Unknown User');  // adjust according to API
-      setCredit(parseFloat(data.credit));
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Error fetching user data');
-      setName('');
-      setCredit(null);
-    } finally {
-      setLoadingUser(false);
+  const columns = [
+    { title: "ID", data: "id", visible: false },
+    { title: "First Name", data: "fname" },
+    { title: "Last Name", data: "lname" },
+    { title: "Position", data: "position" },
+    { title: "RFID", data: "rfid" },
+    {
+      title: "Balance",
+      data: "balance",
+      render: (data) => `₱${parseFloat(data).toFixed(2)}`
     }
-  };
-
-  const handleAddCredit = async () => {
-    if (!rfid || !amount) return;
-    setAddingCredit(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const res = await fetch(`${URL}/api/wispay/credit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rfid,
-          amount,
-          empid: process.env.REACT_APP_EMP_ID || 'POS_USER',
-          username: process.env.REACT_APP_EMP_USERNAME || 'POS Operator',
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to add credit');
-      setCredit(parseFloat(data.newBalance));
-      setMessage(`Credit added! New balance: ${parseFloat(data.newBalance).toFixed(2)}`);
-      setAmount('');
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Error adding credit');
-    } finally {
-      setAddingCredit(false);
-    }
-  };
+  ];
 
   return (
-    <Card className="mx-auto mt-4" style={{ maxWidth: '400px' }}>
-      <Card.Header as="h5">Add Wispay Credit</Card.Header>
-      <Card.Body>
-        {error && <Alert variant="danger">{error}</Alert>}
-        {message && <Alert variant="success">{message}</Alert>}
-        <Form.Group className="mb-3">
-          <Form.Label>Scan RFID</Form.Label>
-          <InputGroup>
-            <Form.Control
-              ref={rfidRef}
-              type="text"
-              placeholder="Enter or scan RFID"
-              value={rfid}
-              onChange={e => setRfid(e.target.value)}
-              disabled={loadingUser}
-            />
-            <Button variant="outline-primary" onClick={handleScan} disabled={loadingUser || !rfid}>
-              {loadingUser ? <Spinner animation="border" size="sm" /> : 'Fetch'}
-            </Button>
-          </InputGroup>
-        </Form.Group>
+    <div className="wispay-wrapper">
+      <div className="wispay-header d-flex justify-content-between align-items-center mb-3">
+        <h2>Wispay Users</h2>
+        <AddWispayCredit />
+      </div>
 
-        {credit !== null && (
-          <>
-            <p><strong>User:</strong> {name}</p>
-            <p><strong>Current Credit:</strong> {credit.toFixed(2)}</p>
-          </>
+      <div className="datatable-container">
+        {loading ? (
+          <div className="text-center my-5 py-5">
+            <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="mt-3">Loading user data...</p>
+          </div>
+        ) : error ? (
+          <div className="alert alert-danger text-center my-5">
+            Error loading data: {error}
+          </div>
+        ) : (
+          <DataTable
+            className="display cell-border"
+            columns={columns}
+            data={data}
+            options={{
+              responsive: true,
+              select: true,
+              dom: '<"d-flex justify-content-between"lf>rt<"d-flex justify-content-between"ip>B',
+              buttons: ["copy", "csv", "excel", "pdf", "print", "colvis"],
+              autoWidth: false,
+              pageLength: 10,
+              lengthChange: true,
+              order: [[1, "asc"]],
+              columnDefs: [
+                {
+                  targets: -1,
+                  className: "dt-right"
+                }
+              ]
+            }}
+          />
         )}
-
-        {credit !== null && (
-          <Form.Group className="mb-3">
-            <Form.Label>Amount to Add</Form.Label>
-            <InputGroup>
-              <Form.Control
-                type="number"
-                placeholder="00.00"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                disabled={addingCredit}
-              />
-              <Button variant="success" onClick={handleAddCredit} disabled={addingCredit || !amount}>
-                {addingCredit ? <Spinner animation="border" size="sm" /> : 'Add'}
-              </Button>
-            </InputGroup>
-          </Form.Group>
-        )}
-      </Card.Body>
-    </Card>
+      </div>
+    </div>
   );
 };
 

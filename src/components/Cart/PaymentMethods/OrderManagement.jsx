@@ -10,7 +10,7 @@ const OrderManagement = () => {
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'daily', 'weekly', 'monthly'
+  const [timeFilter, setTimeFilter] = useState('daily'); // 'all', 'daily', 'weekly', 'monthly'
 
   // Price formatter
   const formatPrice = useCallback((price) => {

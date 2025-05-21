@@ -28,8 +28,8 @@ const Admin = () => {
       color: "linear-gradient(135deg, #fff8e1 0%, #ffe0b2 100%)"
     },
     {
-      title: "Inventory",
-      description: "Track stock levels",
+      title: "Top-up",
+      description: "Add credit to user accounts",
       path: "/Wispay",
       icon: "💳",
       color: "linear-gradient(135deg, #f1f8e9 0%, #dcedc8 100%)"
