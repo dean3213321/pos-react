@@ -1,4 +1,3 @@
-import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import logo from "../assets/nav-logo.png";
@@ -13,14 +12,26 @@ const Navbar = () => {
       <div className="container-fluid">
         {/* Brand/Logo */}
         <div className="d-flex align-items-center">
-          <img 
-            src={logo} 
-            alt="Company Logo" 
-            height="55"
-            className="d-inline-block align-top me-2"
-          />
+          {!isAdminPage ? (
+            <Link to="/screencast">
+              <img 
+                src={logo} 
+                alt="Company Logo" 
+                height="55"
+                className="d-inline-block align-top me-2"
+                style={{ cursor: 'pointer' }}
+              />
+            </Link>
+          ) : (
+            <img 
+              src={logo} 
+              alt="Company Logo" 
+              height="55"
+              className="d-inline-block align-top me-2"
+            />
+          )}
         </div>
-        
+
         {/* Toggle between icon-only and text+icon */}
         <div className="d-flex align-items-center">
           <Link 
@@ -28,7 +39,6 @@ const Navbar = () => {
             className="text-decoration-none d-flex align-items-center" 
             style={{ cursor: 'pointer' }}
           >
-            {/* Text appears on left when in admin mode */}
             {isAdminPage && (
               <span className="text-white me-2">Admin</span>
             )}
@@ -38,6 +48,6 @@ const Navbar = () => {
       </div>
     </nav>
   );
-}
+};
 
 export default Navbar;
