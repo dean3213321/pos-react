@@ -1,4 +1,4 @@
-import OrderManagement from "../components/Cart/PaymentMethods/OrderManagement";
+import OrderManagement from "../components/OrderManagement.jsx";
 
 const Transactions = () => {
     return ( 

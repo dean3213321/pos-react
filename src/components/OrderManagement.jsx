@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { DataTable, DT } from '../../../utils/datatables-imports.jsx';
+import { DataTable, DT } from '../utils/datatables-imports.jsx';
 import { Button, Spinner, Alert, ButtonGroup } from 'react-bootstrap';
 
 DataTable.use(DT);
