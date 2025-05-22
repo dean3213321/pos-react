@@ -1,52 +1,75 @@
+// src/components/Navbar.jsx
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import logo from "../assets/nav-logo.png";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import LoginModal from "../modals/LoginModal.jsx";
+import { useAuth } from "./AuthContext.jsx";
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isAdminPage = location.pathname === "/admin";
+  const [showLogin, setShowLogin] = useState(false);
+  const { isAuthenticated, logout } = useAuth();
 
-  return ( 
-    <nav className="navbar navbar-expand-lg" style={{ backgroundColor: "#502d77" }}>
-      <div className="container-fluid">
-        {/* Brand/Logo */}
-        <div className="d-flex align-items-center">
-          {!isAdminPage ? (
-            <Link to="/screencast">
+  const handleShowLogin = () => setShowLogin(true);
+  const handleCloseLogin = () => setShowLogin(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  return (
+    <>
+      <nav className="navbar navbar-expand-lg" style={{ backgroundColor: "#502d77" }}>
+        <div className="container-fluid">
+          <div className="d-flex align-items-center">
+            {!isAdminPage ? (
+              <Link to="/screencast">
+                <img 
+                  src={logo} 
+                  alt="Company Logo" 
+                  height="55"
+                  className="d-inline-block align-top me-2"
+                  style={{ cursor: 'pointer' }}
+                />
+              </Link>
+            ) : (
               <img 
                 src={logo} 
                 alt="Company Logo" 
                 height="55"
                 className="d-inline-block align-top me-2"
-                style={{ cursor: 'pointer' }}
               />
-            </Link>
-          ) : (
-            <img 
-              src={logo} 
-              alt="Company Logo" 
-              height="55"
-              className="d-inline-block align-top me-2"
-            />
-          )}
-        </div>
-
-        {/* Toggle between icon-only and text+icon */}
-        <div className="d-flex align-items-center">
-          <Link 
-            to={isAdminPage ? "/" : "/admin"} 
-            className="text-decoration-none d-flex align-items-center" 
-            style={{ cursor: 'pointer' }}
-          >
-            {isAdminPage && (
-              <span className="text-white me-2">Admin</span>
             )}
-            <i className="bi bi-person-circle fs-1 text-white"></i>
-          </Link>
+          </div>
+
+          <div className="d-flex align-items-center">
+            {isAuthenticated ? (
+              <button 
+                onClick={handleLogout}
+                className="btn btn-outline-light"
+              >
+                Logout
+              </button>
+            ) : (
+              <div 
+                onClick={handleShowLogin}
+                className="text-decoration-none d-flex align-items-center"
+                style={{ cursor: 'pointer' }}
+              >
+                <i className="bi bi-person-circle fs-1 text-white"></i>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      <LoginModal show={showLogin} handleClose={handleCloseLogin} />
+    </>
   );
 };
 

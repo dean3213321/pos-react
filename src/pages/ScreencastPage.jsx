@@ -1,12 +1,35 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const ScreencastPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const screencastRef = useRef(null);
   const API_URL = process.env.REACT_APP_URL || '';
 
-  // Memoize isToday so it can go into fetchOrders' deps
+  // Automatically enter fullscreen when component mounts
+  useEffect(() => {
+    const enterFullscreen = async () => {
+      try {
+        if (screencastRef.current && !document.fullscreenElement) {
+          await screencastRef.current.requestFullscreen();
+        }
+      } catch (err) {
+        console.error('Failed to enter fullscreen:', err);
+      }
+    };
+
+    enterFullscreen();
+
+    return () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => {
+          console.error('Failed to exit fullscreen:', err);
+        });
+      }
+    };
+  }, []);
+
   const isToday = useCallback((someDate) => {
     const today = new Date();
     return (
@@ -16,7 +39,6 @@ const ScreencastPage = () => {
     );
   }, []);
 
-  // Memoize fetchOrders to satisfy the useEffect dependency rule
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
@@ -46,7 +68,7 @@ const ScreencastPage = () => {
   }, [fetchOrders]);
 
   return (
-    <div style={{
+    <div ref={screencastRef} style={{
       backgroundColor: '#f0f2f5',
       minHeight: '100vh',
     }}>
